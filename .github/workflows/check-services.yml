@@ -35,7 +35,7 @@ jobs:
     strategy:
       matrix:
         service:
-        - example
+        - abilene-paradox
 
     steps:
     - uses: actions/checkout@v2

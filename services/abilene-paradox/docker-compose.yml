@@ -1,0 +1,28 @@
+version: '2.4'
+
+services:
+  abilene-paradox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - files:/files
+    ports:
+      - 14141:1337
+    restart: unless-stopped
+    pids_limit: 512
+    mem_limit: 2048M
+    cpus: 2
+
+  cleaner:
+    image: c4tbuts4d/dedcleaner:latest
+    restart: unless-stopped
+    volumes:
+      - files:/files
+    environment:
+      - DELETE_AFTER=30m
+      - SLEEP=30m
+      - DIRS=/files
+
+volumes:
+  files:
