@@ -401,11 +401,15 @@ impl Context {
 
             Node::And(l, r) => {
                 let l = self.exec(*l)?;
-                let r = self.exec(*r)?;
                 match l {
                     Value::I(l) => {
+                        if l == 0 {
+                            return Ok(Value::I(0));
+                        }
+
+                        let r = self.exec(*r)?;
                         if let Value::I(r) = r {
-                            Ok(Value::I(i64::from(l != 0 && r != 0)))
+                            Ok(Value::I(i64::from(r != 0)))
                         } else {
                             Err(LanguageError {
                                 code: ast.code,
@@ -419,6 +423,76 @@ impl Context {
                         error: "can't and string".to_owned(),
                         span,
                     }),
+                }
+            }
+
+            Node::If(v, l, r) => {
+                let v = self.exec(*v)?;
+                match v {
+                    Value::I(v) => {
+                        if v == 0 {
+                            self.exec(*l)
+                        } else {
+                            self.exec(*r)
+                        }
+                    }
+                    Value::S(_) => Err(LanguageError {
+                        code: ast.code,
+                        error: "can't if on string".to_owned(),
+                        span,
+                    }),
+                }
+            }
+
+            Node::Chr(v) => {
+                let v = self.exec(*v)?;
+                match v {
+                    Value::I(v) => {
+                        if let Some(c) = char::from_u32(v as u32) {
+                            Ok(Value::S(c.to_string()))
+                        } else {
+                            Err(LanguageError {
+                                code: ast.code,
+                                error: "invalid char code".to_owned(),
+                                span,
+                            })
+                        }
+                    }
+                    Value::S(_) => Err(LanguageError {
+                        code: ast.code,
+                        error: "can't chr string".to_owned(),
+                        span,
+                    }),
+                }
+            }
+
+            Node::Ord(l, r) => {
+                let l = self.exec(*l)?;
+                let r = self.exec(*r)?;
+                match l {
+                    Value::I(_) => Err(LanguageError {
+                        code: ast.code,
+                        error: "can't ord int".to_owned(),
+                        span,
+                    }),
+                    Value::S(l) => match r {
+                        Value::I(r) => {
+                            if let Some(c) = l.chars().nth(r as usize) {
+                                Ok(Value::I(c as u32 as i64))
+                            } else {
+                                Err(LanguageError {
+                                    code: ast.code,
+                                    error: "bad index".to_owned(),
+                                    span,
+                                })
+                            }
+                        }
+                        Value::S(_) => Err(LanguageError {
+                            code: ast.code,
+                            error: "can't use string as index".to_owned(),
+                            span,
+                        }),
+                    },
                 }
             }
         }

@@ -242,6 +242,25 @@ pub fn build_ast(tokens: Vec<Token>) -> Result<Atom, LanguageError> {
             continue;
         }
 
+        if token.value == "$$" {
+            let l = stack.pop_back().ok_or_else(|| LanguageError {
+                code: token.code.clone(),
+                error: "no right argument".to_owned(),
+                span: token.span.clone(),
+            })?;
+            let r = stack.pop_back().ok_or_else(|| LanguageError {
+                code: token.code.clone(),
+                error: "no left argument".to_owned(),
+                span: token.span.clone(),
+            })?;
+            stack.push_back(Atom {
+                code: token.code.clone(),
+                node: Node::Define(Box::new(l), Box::new(r)),
+                span: token.span,
+            });
+            continue;
+        }
+
         if token.value == "^" {
             let v = stack.pop_back().ok_or_else(|| LanguageError {
                 code: token.code.clone(),
@@ -350,6 +369,63 @@ pub fn build_ast(tokens: Vec<Token>) -> Result<Atom, LanguageError> {
             continue;
         }
 
+        if token.value == "{" {
+            let r = stack.pop_back().ok_or_else(|| LanguageError {
+                code: token.code.clone(),
+                error: "no right argument".to_owned(),
+                span: token.span.clone(),
+            })?;
+            let l = stack.pop_back().ok_or_else(|| LanguageError {
+                code: token.code.clone(),
+                error: "no left argument".to_owned(),
+                span: token.span.clone(),
+            })?;
+            let v = stack.pop_back().ok_or_else(|| LanguageError {
+                code: token.code.clone(),
+                error: "no if argument".to_owned(),
+                span: token.span.clone(),
+            })?;
+            stack.push_back(Atom {
+                code: token.code.clone(),
+                node: Node::If(Box::new(v), Box::new(l), Box::new(r)),
+                span: token.span,
+            });
+            continue;
+        }
+
+        if token.value == "." {
+            let v = stack.pop_back().ok_or_else(|| LanguageError {
+                code: token.code.clone(),
+                error: "no argument".to_owned(),
+                span: token.span.clone(),
+            })?;
+            stack.push_back(Atom {
+                code: token.code.clone(),
+                node: Node::Chr(Box::new(v)),
+                span: token.span,
+            });
+            continue;
+        }
+
+        if token.value == "§" {
+            let r = stack.pop_back().ok_or_else(|| LanguageError {
+                code: token.code.clone(),
+                error: "no right argument".to_owned(),
+                span: token.span.clone(),
+            })?;
+            let l = stack.pop_back().ok_or_else(|| LanguageError {
+                code: token.code.clone(),
+                error: "no left argument".to_owned(),
+                span: token.span.clone(),
+            })?;
+            stack.push_back(Atom {
+                code: token.code.clone(),
+                node: Node::Ord(Box::new(l), Box::new(r)),
+                span: token.span,
+            });
+            continue;
+        }
+
         return Err(LanguageError {
             code: token.code.clone(),
             error: "unknown token".to_owned(),
@@ -361,7 +437,11 @@ pub fn build_ast(tokens: Vec<Token>) -> Result<Atom, LanguageError> {
         Ok(stack.pop_back().unwrap())
     } else {
         Err(LanguageError {
-            code: Rc::new(String::new()),
+            code: if let Some(token) = stack.back() {
+                token.code.clone()
+            } else {
+                Rc::new(String::new())
+            },
             error: "no tokens found or more than 1 token left".to_owned(),
             span: 0..0,
         })

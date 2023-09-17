@@ -24,6 +24,9 @@ pub enum Node<T> {
     Lt(Box<T>, Box<T>),
     Not(Box<T>),
     And(Box<T>, Box<T>),
+    If(Box<T>, Box<T>, Box<T>),
+    Chr(Box<T>),
+    Ord(Box<T>, Box<T>),
 }
 
 #[derive(Debug)]
