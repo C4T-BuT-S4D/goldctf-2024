@@ -114,6 +114,7 @@ func (cc *ConnectionContext) ProcessCommand(cmd string) {
 
 			cc.projectDir = projectDir
 			cc.projectID = projectID
+			cc.logger = cc.logger.WithField("project", projectID)
 
 			cc.send("project created")
 			cc.send("project-password %x", cc.keyFromProjectID(projectID))
@@ -132,6 +133,7 @@ func (cc *ConnectionContext) ProcessCommand(cmd string) {
 
 		cc.projectDir = projectDir
 		cc.projectID = projectID
+		cc.logger = cc.logger.WithField("project", projectID)
 
 		cc.send("project set")
 

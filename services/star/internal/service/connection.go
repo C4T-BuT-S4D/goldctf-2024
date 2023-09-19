@@ -36,12 +36,19 @@ type ConnectionContext struct {
 	projectDir string
 	baseDir    string
 	secret     []byte
+
+	logger *logrus.Entry
 }
 
-func NewConnectionContext(conn *websocket.Conn, baseDir string) *ConnectionContext {
+func NewConnectionContext(conn *websocket.Conn, baseDir string, connID string) *ConnectionContext {
 	return &ConnectionContext{
 		conn:    conn,
 		baseDir: baseDir,
+
+		logger: logrus.WithFields(logrus.Fields{
+			"component": "connection",
+			"id":        connID,
+		}),
 	}
 }
 
@@ -122,7 +129,7 @@ func (cc *ConnectionContext) archiveFiles(name string, files []ArchiveFile) {
 	defer func() {
 		for i := len(toClose) - 1; i >= 0; i-- {
 			if err := toClose[i-1].Close(); err != nil {
-				logrus.Errorf("closing %v: %v", toClose[i-1], err)
+				cc.logger.Errorf("closing %v: %v", toClose[i-1], err)
 			}
 		}
 	}()
@@ -177,7 +184,7 @@ func (cc *ConnectionContext) archiveFiles(name string, files []ArchiveFile) {
 
 		_, err = io.Copy(tw, fr)
 		if closeErr := fr.Close(); closeErr != nil {
-			logrus.Errorf("closing file `%s`: %v", fp, closeErr)
+			cc.logger.Errorf("closing file `%s`: %v", fp, closeErr)
 		}
 		if err != nil {
 			cc.externalErr("writing file `%s`: %v", fp, err)
@@ -225,7 +232,7 @@ func (cc *ConnectionContext) compressFiles(inPath, outPath string) error {
 	}
 	defer func() {
 		if err := ur.Close(); err != nil {
-			logrus.Errorf("closing upload reader: %v", err)
+			cc.logger.Errorf("closing upload reader: %v", err)
 		}
 	}()
 
@@ -235,14 +242,14 @@ func (cc *ConnectionContext) compressFiles(inPath, outPath string) error {
 	}
 	defer func() {
 		if err := outFile.Close(); err != nil {
-			logrus.Errorf("closing output file: %v", err)
+			cc.logger.Errorf("closing output file: %v", err)
 		}
 	}()
 
 	zw := zip.NewWriter(outFile)
 	defer func() {
 		if err := zw.Close(); err != nil {
-			logrus.Errorf("closing zip writer: %v", err)
+			cc.logger.Errorf("closing zip writer: %v", err)
 		}
 	}()
 
@@ -328,7 +335,7 @@ func (cc *ConnectionContext) findArchiveFile(path string) (string, []string) {
 	}
 	defer func() {
 		if err := zr.Close(); err != nil {
-			logrus.Errorf("closing archive `%s`: %v", archivePath, err)
+			cc.logger.Errorf("closing archive `%s`: %v", archivePath, err)
 		}
 	}()
 
@@ -344,7 +351,7 @@ func (cc *ConnectionContext) findArchiveFile(path string) (string, []string) {
 			data, err := io.ReadAll(io.LimitReader(rc, maxSingleDownloadSize))
 
 			if closeErr := rc.Close(); closeErr != nil {
-				logrus.Errorf("closing file `%s` in archive `%s`: %v", archiveFilename, archivePath, err)
+				cc.logger.Errorf("closing file `%s` in archive `%s`: %v", archiveFilename, archivePath, err)
 			}
 
 			if err != nil {

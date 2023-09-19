@@ -1,2 +1,4 @@
 checklib==0.7.0
 websocket-client
+pycryptodome
+pydantic
