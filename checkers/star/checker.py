@@ -15,7 +15,7 @@ from starlib import CheckMachine, JobRequest, Job, Step, Artifact
 class Checker(BaseChecker):
     # tar, targz, zip.
     vulns: int = 3
-    timeout: int = 30
+    timeout: int = 20
     uses_attack_data: bool = True
 
     def __init__(self, *args, **kwargs):
