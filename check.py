@@ -232,7 +232,7 @@ class Service(BaseValidator):
         return self._checker.info
 
     def _run_dc(self, *args):
-        cmd = ['docker-compose', '-f', str(self._dc_path)] + list(args)
+        cmd = ['docker', 'compose', '-f', str(self._dc_path)] + list(args)
         subprocess.run(cmd, check=True)
 
     def up(self):
