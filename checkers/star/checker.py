@@ -332,7 +332,7 @@ class Checker(BaseChecker):
             return random.choice([check_conn1, check_conn2])
 
         job_name = rnd_string(random.randint(5, 20))
-        count_files = random.randint(100, 1000)
+        count_files = random.randint(100, 500)
         destinations = [
             rnd_string(random.randint(5, 20)) for _ in range(2 * count_files)
         ]

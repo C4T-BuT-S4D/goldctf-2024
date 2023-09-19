@@ -90,7 +90,7 @@ func main() {
 
 	c := cleaner.NewCleaner(
 		5*time.Minute,
-		200000*time.Minute,
+		20*time.Minute,
 		filepath.Join(pwd, "data"),
 	)
 	wg.Add(1)
