@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"io"
 	"net/http"
@@ -21,13 +22,13 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-func connectionHandler(pwd string) func(conn *websocket.Conn) {
+func connectionHandler(pwd string, secret []byte) func(conn *websocket.Conn) {
 	dataDir := filepath.Join(pwd, "data")
 
 	return func(ws *websocket.Conn) {
 		connID := uuid.NewString()[:8]
 
-		cc := service.NewConnectionContext(ws, dataDir, connID)
+		cc := service.NewConnectionContext(ws, dataDir, connID, secret)
 		var msg string
 		for {
 			err := websocket.Message.Receive(ws, &msg)
@@ -45,6 +46,21 @@ func connectionHandler(pwd string) func(conn *websocket.Conn) {
 	}
 }
 
+func readSecret() []byte {
+	secret, err := os.ReadFile("secrets/star_secret")
+	if err == nil {
+		return secret
+	}
+	secret = make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, secret); err != nil {
+		logrus.Fatalf("generating secret: %v", err)
+	}
+	if err := os.WriteFile("secrets/star_secret", secret, 0600); err != nil {
+		logrus.Fatalf("writing secret: %v", err)
+	}
+	return secret
+}
+
 func main() {
 	logging.Init()
 
@@ -55,7 +71,7 @@ func main() {
 
 	http.Handle("/ws/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.Header.Set("Origin", "http://"+r.Host)
-		websocket.Handler(connectionHandler(pwd)).ServeHTTP(w, r)
+		websocket.Handler(connectionHandler(pwd, readSecret())).ServeHTTP(w, r)
 	}))
 
 	wg := sync.WaitGroup{}
@@ -74,7 +90,7 @@ func main() {
 
 	c := cleaner.NewCleaner(
 		5*time.Minute,
-		20*time.Minute,
+		200000*time.Minute,
 		filepath.Join(pwd, "data"),
 	)
 	wg.Add(1)

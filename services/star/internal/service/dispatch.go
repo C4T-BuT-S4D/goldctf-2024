@@ -17,6 +17,13 @@ func (cc *ConnectionContext) ProcessCommand(cmd string) {
 
 	parts := strings.Split(cmd, " ")
 	switch parts[0] {
+	case "captcha":
+		if err := cc.handleCaptcha(); err != nil {
+			cc.externalErr("captcha failed: %v", err)
+			return
+		}
+		cc.captchaSolved = true
+
 	case "upload":
 		if len(parts) != 3 {
 			cc.externalErr("upload command requires exactly 2 arguments")
@@ -28,10 +35,11 @@ func (cc *ConnectionContext) ProcessCommand(cmd string) {
 			return
 		}
 
-		if err := cc.handleCaptcha(); err != nil {
-			cc.externalErr("captcha failed: %v", err)
+		if !cc.captchaSolved {
+			cc.externalErr("captcha not solved")
 			return
 		}
+		cc.captchaSolved = false
 
 		cc.upload(parts[1], parts[2])
 
@@ -85,10 +93,11 @@ func (cc *ConnectionContext) ProcessCommand(cmd string) {
 			return
 		}
 
-		if err := cc.handleCaptcha(); err != nil {
-			cc.externalErr("captcha failed: %v", err)
+		if !cc.captchaSolved {
+			cc.externalErr("captcha not solved")
 			return
 		}
+		cc.captchaSolved = false
 
 		cc.runJob(parts[1])
 

@@ -8,8 +8,9 @@ services:
       - "5555:5555"
     volumes:
       - "./data:/app/data"
-#    environment:
-#      GOMAXPROCS: 2
+      - "./secrets:/app/secrets"
+    #    environment:
+    #      GOMAXPROCS: 2
     pids_limit: 512
     mem_limit: 4G
     cpus: 2

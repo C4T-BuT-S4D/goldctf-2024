@@ -32,18 +32,25 @@ const (
 type ConnectionContext struct {
 	conn *websocket.Conn
 
-	projectID  string
-	projectDir string
-	baseDir    string
-	secret     []byte
+	projectID     string
+	projectDir    string
+	baseDir       string
+	secret        []byte
+	captchaSolved bool
 
 	logger *logrus.Entry
 }
 
-func NewConnectionContext(conn *websocket.Conn, baseDir string, connID string) *ConnectionContext {
+func NewConnectionContext(
+	conn *websocket.Conn,
+	baseDir string,
+	connID string,
+	secret []byte,
+) *ConnectionContext {
 	return &ConnectionContext{
 		conn:    conn,
 		baseDir: baseDir,
+		secret:  secret,
 
 		logger: logrus.WithFields(logrus.Fields{
 			"component": "connection",
@@ -144,6 +151,7 @@ func (cc *ConnectionContext) archiveFiles(name string, files []ArchiveFile) {
 	tw := tar.NewWriter(tFile)
 	toClose = append(toClose, tw)
 
+	logrus.Debugf("archiving %d files", len(files))
 	for _, fn := range files {
 		fp, err := cc.sanitizePath(fn.Source)
 		if err != nil {
@@ -204,6 +212,7 @@ func (cc *ConnectionContext) archiveFiles(name string, files []ArchiveFile) {
 	}
 	toClose = toClose[:len(toClose)-1]
 
+	logrus.Debugf("done archiving %d files, compressing", len(files))
 	if err := cc.compressFiles(tarPath, zipPath); err != nil {
 		cc.externalErr("compressing backup: %v", err)
 		return
@@ -396,10 +405,6 @@ func (cc *ConnectionContext) upload(name string, b64data string) {
 	uploadPath, err := cc.sanitizeMyProjectPath(filepath.Join(cc.projectDir, name))
 	if err != nil {
 		cc.externalErr("invalid path `%s`: %v", name, err)
-		return
-	}
-	if utils.FileExists(uploadPath) {
-		cc.externalErr("file `%s` already exists", uploadPath)
 		return
 	}
 

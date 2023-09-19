@@ -13,7 +13,7 @@ func Init() {
 	logrus.SetFormatter(&logrus.TextFormatter{
 		ForceColors:            true,
 		FullTimestamp:          true,
-		TimestampFormat:        "2006-01-02 15:04:05",
+		TimestampFormat:        "2006-01-02 15:04:05.000",
 		DisableLevelTruncation: false,
 		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
 			filename := filepath.Base(f.File)

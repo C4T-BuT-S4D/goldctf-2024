@@ -77,6 +77,7 @@ class CheckMachine:
         self.c.assert_eq("project set", conn.recv(), "bad project msg", status=st)
 
     def solve_captcha(self, conn: W):
+        conn.send("captcha")
         captcha_msg = conn.recv().split(" ")
         self.c.assert_eq(len(captcha_msg), 2, "bad captcha msg")
         self.c.assert_eq(captcha_msg[0], "captcha", "bad captcha msg")
@@ -105,6 +106,8 @@ class CheckMachine:
         self.c.assert_eq("captcha ok", conn.recv(), "could not solve captcha")
 
     def upload(self, conn: W, name: str, fmt: str, files: list[tuple[str, bytes]]):
+        self.solve_captcha(conn)
+
         with tempfile.NamedTemporaryFile(delete=True) as f:
             if self.is_tar(fmt):
                 with tarfile.open(f.name, "w") as tf:
@@ -129,7 +132,6 @@ class CheckMachine:
                 content = f.read()
 
             conn.send(f"upload {name}.{fmt} {self.compress(content)}")
-            self.solve_captcha(conn)
 
         res = conn.recv()
         self.c.assert_eq(
@@ -165,8 +167,8 @@ class CheckMachine:
         return self.decompress(tokens[2])
 
     def job(self, conn: W, job: JobRequest, st=Status.MUMBLE):
-        conn.send(f"job {self.compress(job.json().encode())}")
         self.solve_captcha(conn)
+        conn.send(f"job {self.compress(job.json().encode())}")
         self.c.assert_eq("job ok", conn.recv(), "could not send job", status=st)
 
     def cleanup_job(self, conn: W, name: str):
