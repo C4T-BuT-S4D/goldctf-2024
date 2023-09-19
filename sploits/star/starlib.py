@@ -60,7 +60,7 @@ class CheckMachine:
 
     @staticmethod
     def solve_captcha(conn: W):
-        conn.send('captcha')
+        conn.send("captcha")
         captcha_msg = conn.recv().split(" ")
         print(captcha_msg)
 
@@ -83,8 +83,8 @@ class CheckMachine:
     def download(self, conn: W, path: str):
         conn.send(f"download {path}")
         resp = conn.recv()
-        print('download response:', resp)
-        return self.decompress(resp.split(' ')[-1])
+        print("download response:", resp)
+        return self.decompress(resp.split(" ")[-1])
 
     @staticmethod
     def compress(data: bytes) -> str:

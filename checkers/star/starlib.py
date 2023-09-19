@@ -122,7 +122,9 @@ class CheckMachine:
                     content = gzip.compress(content)
 
             else:
-                with zipfile.ZipFile(f.name, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                with zipfile.ZipFile(
+                    f.name, "w", compression=zipfile.ZIP_DEFLATED
+                ) as zf:
                     for filename, content in files:
                         zipinfo = zipfile.ZipInfo(
                             filename=filename,

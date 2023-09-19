@@ -383,7 +383,12 @@ class Checker(BaseChecker):
         for i in checks_variant1:
             if self.c.is_tar(fmt):
                 self.c.check_encrypted_tar_archive_files(
-                    random_conn(), job_name, destinations[i], project_pass, fmt, flag_files
+                    random_conn(),
+                    job_name,
+                    destinations[i],
+                    project_pass,
+                    fmt,
+                    flag_files,
                 )
             else:
                 self.c.check_encrypted_zip_archive_files(
