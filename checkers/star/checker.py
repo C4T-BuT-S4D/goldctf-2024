@@ -1,7 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import binascii
 import random
-import time
 import traceback
 import uuid
 import sys
