@@ -3,7 +3,7 @@
 import sys
 import hashlib
 from checklib import BaseChecker, Status, cquit, rnd_string
-from abilene_lib import CheckMachine
+from abilene_lib import CheckMachine, WebSocketHandler
 from websocket import WebSocketException
 
 
@@ -25,8 +25,9 @@ class Checker(BaseChecker):
     def check(self):
         program, expected_output = self.mch.random_program()
         with self.mch.ws() as ws:
-            self.mch.init_connection(ws)
-            self.mch.test_program(ws, program, expected_output, status=Status.MUMBLE)
+            handler = WebSocketHandler(ws=ws)
+            self.mch.init_connection(handler)
+            self.mch.test_program(handler, program, expected_output, status=Status.MUMBLE)
 
         self.cquit(Status.OK)
 
@@ -34,9 +35,10 @@ class Checker(BaseChecker):
         filename = self.mch.get_filename(rnd_string(32))
         program = self.mch.write_to_file_program(filename, flag, print_ok=True)
         with self.mch.ws() as ws:
-            self.mch.init_connection(ws)
+            handler = WebSocketHandler(ws=ws)
+            self.mch.init_connection(handler)
             self.assert_eq(
-                self.mch.run_program(ws, program),
+                self.mch.run_program(handler, program),
                 b"ok",
                 "Can't write file",
                 Status.MUMBLE,
@@ -46,9 +48,10 @@ class Checker(BaseChecker):
     def get(self, flag_id: str, flag: str, vuln: str):
         program = self.mch.read_from_file_program(flag_id, print_contents=True)
         with self.mch.ws() as ws:
-            self.mch.init_connection(ws)
+            handler = WebSocketHandler(ws=ws)
+            self.mch.init_connection(handler)
             self.assert_eq(
-                self.mch.run_program(ws, program),
+                self.mch.run_program(handler, program),
                 flag.encode(),
                 "Can't read flag from file",
                 Status.CORRUPT,

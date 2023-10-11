@@ -3,42 +3,52 @@ from contextlib import closing
 from websocket import create_connection, WebSocket
 import ssl
 import base64
+import dataclasses
 from random import randint
+
+
+@dataclasses.dataclass
+class WebSocketHandler:
+    ws: WebSocket
+    buffer: bytes = dataclasses.field(default_factory=lambda: b"")
 
 
 class CheckMachine:
     def __init__(self, checker: BaseChecker):
         self.c = checker
 
-    def ws(self):
+    def ws(self) -> closing[WebSocket]:
         return closing(
             create_connection(
                 f"wss://{self.c.host}:14141/ws", sslopt={"cert_reqs": ssl.CERT_NONE}
             )
         )
 
-    def send(self, ws: WebSocket, data: bytes) -> bytes:
+    def __send(self, handler: WebSocketHandler, data: bytes):
+        self.__recvuntil(handler, b"> ")
         for c in data:
-            ws.send(b"1" + bytes([c]))
-            data = self.recv(ws)
-            if data.endswith(b'\r\n> '):
-                return data.removeprefix(b'\r\n')
-        return self.recv(ws)
+            handler.ws.send(b"1" + bytes([c]))
 
-    def recv(self, ws: WebSocket) -> bytes:
+    def __recv(self, handler: WebSocketHandler) -> bytes:
         while True:
-            data = ws.recv()
+            data = handler.ws.recv()
             if type(data) == str:
                 data = data.encode()
             assert type(data) == bytes
             if data[:1] == b"1":
                 return base64.b64decode(data[1:])
 
-    def init_connection(self, ws: WebSocket):
-        ws.send(b"""{"Arguments": "", "AuthToken": ""}""")
-        ws.send_binary(b"""3{columns: 0, rows: 0}""")
-        if b"\r\n> " not in self.recv(ws):
-            self.recv(ws)
+    def __recvuntil(self, handler: WebSocketHandler, data: bytes) -> bytes:
+        while data not in handler.buffer:
+            handler.buffer += self.__recv(handler)
+        pos = handler.buffer.find(data)
+        res = handler.buffer[:pos]
+        handler.buffer = handler.buffer[pos + len(data):]
+        return res
+
+    def init_connection(self, handler: WebSocketHandler):
+        handler.ws.send(b"""{"Arguments": "", "AuthToken": ""}""")
+        handler.ws.send_binary(b"""3{columns: 0, rows: 0}""")
 
     def escape(self, program: str) -> str:
         return program.replace("\\", "\\\\").replace(" ", "\\ ")
@@ -200,18 +210,27 @@ class CheckMachine:
             [self.get_string_program(filename), "?"] + (["`"] if print_contents else [])
         )
 
-    def run_program(self, ws: WebSocket, program: str) -> bytes:
-        self.send(ws, b"@prog @ $\n")
+    def run_program(self, handler: WebSocketHandler, program: str) -> bytes:
+        self.__send(handler, b"@prog @ $\n")
         for i in range(0, len(program), 50):
-            self.send(
-                ws, f"@prog ^ @{self.escape(program[i:i+50])} + @prog $$\n".encode()
+            self.__send(
+                handler,
+                f"@prog ^ @{self.escape(program[i:i+50])} + @prog $$\n".encode(),
             )
-        return self.send(ws, b"@prog ^ ;\n").removesuffix(b"> ").removesuffix(b"\r\n").removeprefix(b"\r\n")
+        self.__send(handler, b"@prog ^ ;\n")
+        self.__recvuntil(handler, b"\r\n")
+        return self.__recvuntil(handler, b"\r\n")
 
     def test_program(
-        self, ws: WebSocket, program: str, expected_output: bytes, status: Status
+        self,
+        handler: WebSocketHandler,
+        program: str,
+        expected_output: bytes,
+        status: Status,
     ):
-        output = self.run_program(ws, program)
         self.c.assert_eq(
-            output, expected_output, "Unexpected output of program", status
+            self.run_program(handler, program),
+            expected_output,
+            "Unexpected output of program",
+            status,
         )

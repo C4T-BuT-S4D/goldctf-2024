@@ -13,5 +13,5 @@ pub mod prs;
 
 pub fn run(ctx: &mut exc::context::Context, code: Rc<String>) -> Result<Value, LanguageError> {
     let ast = lex::build_ast(prs::parse(code))?;
-    ctx.exec(ast)
+    ctx.exec(ast, 0)
 }

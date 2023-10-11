@@ -9,20 +9,46 @@ use crate::{
     lex, prs,
 };
 
+const MAX_TOTAL_FILE_BYTES: usize = 64;
+const MAX_STRING_LENGTH: usize = 32768;
+const MAX_VARIABLES: usize = 1024;
+const MAX_RECURSION_DEPTH: usize = 64;
+
 #[derive(Default)]
 pub struct Context {
     variables: HashMap<String, Value>,
+    total_file_bytes: usize,
 }
 
 impl Context {
-    pub fn exec(&mut self, ast: Atom) -> Result<Value, LanguageError> {
+    pub fn exec(&mut self, ast: Atom, depth: usize) -> Result<Value, LanguageError> {
         let span = ast.span.clone();
+        if depth > MAX_RECURSION_DEPTH {
+            return Err(LanguageError {
+                code: ast.code,
+                error: "recursion depth exceeded".to_owned(),
+                span: span,
+            });
+        }
         match ast.node {
-            Node::Const(v) => Ok(v),
+            Node::Const(v) => match v {
+                Value::I(v) => Ok(Value::I(v)),
+                Value::S(v) => {
+                    if v.len() > MAX_STRING_LENGTH {
+                        Err(LanguageError {
+                            code: ast.code,
+                            error: "string length exceeded".to_owned(),
+                            span,
+                        })
+                    } else {
+                        Ok(Value::S(v))
+                    }
+                }
+            },
 
             Node::Add(l, r) => {
-                let l = self.exec(*l)?;
-                let r = self.exec(*r)?;
+                let l = self.exec(*l, depth + 1)?;
+                let r = self.exec(*r, depth + 1)?;
                 match l {
                     Value::I(l) => {
                         if let Value::I(r) = r {
@@ -37,7 +63,15 @@ impl Context {
                     }
                     Value::S(l) => {
                         if let Value::S(r) = r {
-                            Ok(Value::S(l + &r))
+                            if l.len() + r.len() > MAX_STRING_LENGTH {
+                                Err(LanguageError {
+                                    code: ast.code,
+                                    error: "string length exceeded".to_owned(),
+                                    span,
+                                })
+                            } else {
+                                Ok(Value::S(l + &r))
+                            }
                         } else {
                             Err(LanguageError {
                                 code: ast.code,
@@ -50,8 +84,8 @@ impl Context {
             }
 
             Node::Sub(l, r) => {
-                let l = self.exec(*l)?;
-                let r = self.exec(*r)?;
+                let l = self.exec(*l, depth + 1)?;
+                let r = self.exec(*r, depth + 1)?;
                 match l {
                     Value::I(l) => {
                         if let Value::I(r) = r {
@@ -73,8 +107,8 @@ impl Context {
             }
 
             Node::Mul(l, r) => {
-                let l = self.exec(*l)?;
-                let r = self.exec(*r)?;
+                let l = self.exec(*l, depth + 1)?;
+                let r = self.exec(*r, depth + 1)?;
                 match l {
                     Value::I(l) => {
                         if let Value::I(r) = r {
@@ -96,8 +130,8 @@ impl Context {
             }
 
             Node::Div(l, r) => {
-                let l = self.exec(*l)?;
-                let r = self.exec(*r)?;
+                let l = self.exec(*l, depth + 1)?;
+                let r = self.exec(*r, depth + 1)?;
                 match l {
                     Value::I(l) => {
                         if let Value::I(r) = r {
@@ -119,24 +153,24 @@ impl Context {
             }
 
             Node::Exec(v) => {
-                let v = self.exec(*v)?;
+                let v = self.exec(*v, depth + 1)?;
                 match v {
                     Value::I(_) => Err(LanguageError {
                         code: ast.code,
                         error: "can't exec int".to_owned(),
                         span,
                     }),
-                    Value::S(v) => self.exec(lex::build_ast(prs::parse(Rc::new(v)))?),
+                    Value::S(v) => self.exec(lex::build_ast(prs::parse(Rc::new(v)))?, depth + 1),
                 }
             }
 
             Node::Second(l, r) => {
-                self.exec(*l)?;
-                self.exec(*r)
+                self.exec(*l, depth + 1)?;
+                self.exec(*r, depth + 1)
             }
 
             Node::Show(v) => {
-                let v = self.exec(*v)?;
+                let v = self.exec(*v, depth + 1)?;
                 let s = match v {
                     Value::I(v) => format!("{v}"),
                     Value::S(v) => format!("{v}"),
@@ -146,7 +180,7 @@ impl Context {
             }
 
             Node::ShowLn(v) => {
-                let v = self.exec(*v)?;
+                let v = self.exec(*v, depth + 1)?;
                 let s = match v {
                     Value::I(v) => format!("{v}"),
                     Value::S(v) => format!("{v}"),
@@ -156,8 +190,8 @@ impl Context {
             }
 
             Node::Write(l, r) => {
-                let l = self.exec(*l)?;
-                let r = self.exec(*r)?;
+                let l = self.exec(*l, depth + 1)?;
+                let r = self.exec(*r, depth + 1)?;
                 match l {
                     Value::I(_) => Err(LanguageError {
                         code: ast.code,
@@ -178,6 +212,15 @@ impl Context {
                                     span,
                                 })
                             };
+                            if self.total_file_bytes + r.as_bytes().len() > MAX_TOTAL_FILE_BYTES {
+                                return Err(LanguageError {
+                                    code: ast.code,
+                                    error: "total file bytes exceeded".to_owned(),
+                                    span,
+                                });
+                            } else {
+                                self.total_file_bytes += r.as_bytes().len()
+                            }
                             if f.write_all(r.as_bytes()).is_err() {
                                 Err(LanguageError {
                                     code: ast.code,
@@ -193,8 +236,8 @@ impl Context {
             }
 
             Node::Append(l, r) => {
-                let l = self.exec(*l)?;
-                let r = self.exec(*r)?;
+                let l = self.exec(*l, depth + 1)?;
+                let r = self.exec(*r, depth + 1)?;
                 match l {
                     Value::I(_) => Err(LanguageError {
                         code: ast.code,
@@ -215,6 +258,15 @@ impl Context {
                                     span,
                                 })
                             };
+                            if self.total_file_bytes + r.as_bytes().len() > MAX_TOTAL_FILE_BYTES {
+                                return Err(LanguageError {
+                                    code: ast.code,
+                                    error: "total file bytes exceeded".to_owned(),
+                                    span,
+                                });
+                            } else {
+                                self.total_file_bytes += r.as_bytes().len()
+                            }
                             if f.write_all(r.as_bytes()).is_err() {
                                 Err(LanguageError {
                                     code: ast.code,
@@ -230,7 +282,7 @@ impl Context {
             }
 
             Node::Read(v) => {
-                let v = self.exec(*v)?;
+                let v = self.exec(*v, depth + 1)?;
                 match v {
                     Value::I(_) => Err(LanguageError {
                         code: ast.code,
@@ -252,8 +304,8 @@ impl Context {
             }
 
             Node::Define(l, r) => {
-                let l = self.exec(*l)?;
-                let r = self.exec(*r)?;
+                let l = self.exec(*l, depth + 1)?;
+                let r = self.exec(*r, depth + 1)?;
                 match l {
                     Value::I(_) => Err(LanguageError {
                         code: ast.code,
@@ -262,13 +314,21 @@ impl Context {
                     }),
                     Value::S(l) => {
                         self.variables.insert(l, r.clone());
-                        Ok(r)
+                        if self.variables.len() > MAX_VARIABLES {
+                            Err(LanguageError {
+                                code: ast.code,
+                                error: "variables exceeded".to_owned(),
+                                span,
+                            })
+                        } else {
+                            Ok(r)
+                        }
                     }
                 }
             }
 
             Node::Access(v) => {
-                let v = self.exec(*v)?;
+                let v = self.exec(*v, depth + 1)?;
                 match v {
                     Value::I(_) => Err(LanguageError {
                         code: ast.code,
@@ -288,7 +348,7 @@ impl Context {
             }
 
             Node::Call(v) => {
-                let v = self.exec(*v)?;
+                let v = self.exec(*v, depth + 1)?;
                 match v {
                     Value::I(_) => Err(LanguageError {
                         code: ast.code,
@@ -307,7 +367,7 @@ impl Context {
                                 error: "can't exec int".to_owned(),
                                 span,
                             }),
-                            Value::S(v) => self.exec(lex::build_ast(prs::parse(Rc::new(v.to_string())))?),
+                            Value::S(v) => self.exec(lex::build_ast(prs::parse(Rc::new(v.to_string())))?, depth + 1),
                         }
                     }
                 }
@@ -325,13 +385,13 @@ impl Context {
                         error: "can't exec int".to_owned(),
                         span,
                     }),
-                    Value::S(v) => self.exec(lex::build_ast(prs::parse(Rc::new(v.to_string())))?),
+                    Value::S(v) => self.exec(lex::build_ast(prs::parse(Rc::new(v.to_string())))?, depth + 1),
                 }
             }
 
             Node::Eq(l, r) => {
-                let l = self.exec(*l)?;
-                let r = self.exec(*r)?;
+                let l = self.exec(*l, depth + 1)?;
+                let r = self.exec(*r, depth + 1)?;
                 match l {
                     Value::I(l) => {
                         if let Value::I(r) = r {
@@ -359,8 +419,8 @@ impl Context {
             }
 
             Node::Lt(l, r) => {
-                let l = self.exec(*l)?;
-                let r = self.exec(*r)?;
+                let l = self.exec(*l, depth + 1)?;
+                let r = self.exec(*r, depth + 1)?;
                 match l {
                     Value::I(l) => {
                         if let Value::I(r) = r {
@@ -388,7 +448,7 @@ impl Context {
             }
 
             Node::Not(v) => {
-                let v = self.exec(*v)?;
+                let v = self.exec(*v, depth + 1)?;
                 match v {
                     Value::I(v) => Ok(Value::I(i64::from(v == 0))),
                     Value::S(_) => Err(LanguageError {
@@ -400,14 +460,14 @@ impl Context {
             }
 
             Node::And(l, r) => {
-                let l = self.exec(*l)?;
+                let l = self.exec(*l, depth + 1)?;
                 match l {
                     Value::I(l) => {
                         if l == 0 {
                             return Ok(Value::I(0));
                         }
 
-                        let r = self.exec(*r)?;
+                        let r = self.exec(*r, depth + 1)?;
                         if let Value::I(r) = r {
                             Ok(Value::I(i64::from(r != 0)))
                         } else {
@@ -427,13 +487,13 @@ impl Context {
             }
 
             Node::If(v, l, r) => {
-                let v = self.exec(*v)?;
+                let v = self.exec(*v, depth + 1)?;
                 match v {
                     Value::I(v) => {
                         if v == 0 {
-                            self.exec(*l)
+                            self.exec(*l, depth + 1)
                         } else {
-                            self.exec(*r)
+                            self.exec(*r, depth + 1)
                         }
                     }
                     Value::S(_) => Err(LanguageError {
@@ -445,7 +505,7 @@ impl Context {
             }
 
             Node::Chr(v) => {
-                let v = self.exec(*v)?;
+                let v = self.exec(*v, depth + 1)?;
                 match v {
                     Value::I(v) => {
                         if let Some(c) = char::from_u32(v as u32) {
@@ -467,8 +527,8 @@ impl Context {
             }
 
             Node::Ord(l, r) => {
-                let l = self.exec(*l)?;
-                let r = self.exec(*r)?;
+                let l = self.exec(*l, depth + 1)?;
+                let r = self.exec(*r, depth + 1)?;
                 match l {
                     Value::I(_) => Err(LanguageError {
                         code: ast.code,
