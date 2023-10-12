@@ -3,7 +3,7 @@
 import sys
 import hashlib
 from checklib import BaseChecker, Status, cquit, rnd_string
-from abilene_lib import CheckMachine, WebSocketHandler
+from goldarn_lib import CheckMachine, WebSocketHandler
 from websocket import WebSocketException
 
 

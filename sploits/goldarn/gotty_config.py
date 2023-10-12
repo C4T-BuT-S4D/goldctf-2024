@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from abilene_lib import CheckMachine, WebSocketHandler
+from goldarn_lib import CheckMachine, WebSocketHandler
 from checklib import BaseChecker
 from threading import Thread
 import sys
@@ -20,7 +20,9 @@ def step3(mch: CheckMachine, path: str):
         with mch.ws() as ws:
             handler = WebSocketHandler(ws=ws)
             mch.init_connection(handler, arguments=f"?arg={path}&arg=--manifest-path&arg={path}/Cargo.toml")
-            if b"hacked" in mch.recv(handler):
+            data = mch.recv(handler)
+            print(data)
+            if b"hacked" in data:
                 filenames = re.findall(rb'path\|(/files/[a-zA-Z0-9]+)', mch.recv(handler))
                 step4(mch, filenames)
 
@@ -43,7 +45,7 @@ def step2(mch: CheckMachine):
             path = path.decode()
 
             mch.run_program(handler, f"@{path}/Cargo.toml @[package]\\n ! @ok , `")
-            mch.run_program(handler, f"@{path}/Cargo.toml @name\\ =\\ \"abilene\"\\n % @ok , `")
+            mch.run_program(handler, f"@{path}/Cargo.toml @name\\ =\\ \"goldarn\"\\n % @ok , `")
             mch.run_program(handler, f"@{path}/Cargo.toml @version\\ =\\ \"0.1.0\"\\n % @ok , `")
             mch.run_program(handler, f"@{path}/Cargo.toml @edition\\ =\\ \"2021\"\\n % @ok , `")
             mch.run_program(handler, f"@{path}/Cargo.toml @\\n % @ok , `")
@@ -86,4 +88,4 @@ def step1(mch: CheckMachine):
 
 
 if __name__ == "__main__":
-    step2(CheckMachine(BaseChecker(sys.argv[1])))
+    step1(CheckMachine(BaseChecker(sys.argv[1])))
