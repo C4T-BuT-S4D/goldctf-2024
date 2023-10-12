@@ -7,10 +7,11 @@ services:
       dockerfile: Dockerfile
     volumes:
       - files:/files
+      - cache:/cache
     ports:
-      - 14141:1337
+      - 14141-15164:1337-2360
     restart: unless-stopped
-    pids_limit: 512
+    pids_limit: 16384
     mem_limit: 2048M
     cpus: 2
 
@@ -23,6 +24,21 @@ services:
       - DELETE_AFTER=30m
       - SLEEP=30m
       - DIRS=/files
+    pids_limit: 512
+    mem_limit: 256m
+    cpus: 1
+
+  # cache_cleaner:
+  #   build:
+  #     context: cleaner
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - cache:/cache
+  #   restart: unless-stopped
+  #   pids_limit: 512
+  #   mem_limit: 256m
+  #   cpus: 1
 
 volumes:
   files:
+  cache:

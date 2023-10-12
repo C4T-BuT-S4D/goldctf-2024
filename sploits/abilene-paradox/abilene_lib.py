@@ -20,14 +20,14 @@ class CheckMachine:
     def ws(self) -> closing[WebSocket]:
         return closing(
             create_connection(
-                f"wss://{self.c.host}:{randint(14141, 15164)}/ws", sslopt={"cert_reqs": ssl.CERT_NONE}
+                f"wss://{self.c.host}:14141/ws", sslopt={"cert_reqs": ssl.CERT_NONE}
             )
         )
 
     def __send(self, handler: WebSocketHandler, data: bytes):
         self.__recvuntil(handler, b"> ")
         for c in data:
-            handler.ws.send(b"0" + bytes([c]))
+            handler.ws.send(b"1" + bytes([c]))
 
     def __recv(self, handler: WebSocketHandler) -> bytes:
         while True:
@@ -35,7 +35,7 @@ class CheckMachine:
             if type(data) == str:
                 data = data.encode()
             assert type(data) == bytes
-            if data[:1] == b"0":
+            if data[:1] == b"1":
                 return base64.b64decode(data[1:])
 
     def __recvuntil(self, handler: WebSocketHandler, data: bytes) -> bytes:
@@ -48,7 +48,7 @@ class CheckMachine:
 
     def init_connection(self, handler: WebSocketHandler):
         handler.ws.send(b"""{"Arguments": "", "AuthToken": ""}""")
-        handler.ws.send_binary(b"""2{"columns": 0, "rows": 0}""")
+        handler.ws.send_binary(b"""3{columns: 0, rows: 0}""")
 
     def escape(self, program: str) -> str:
         return program.replace("\\", "\\\\").replace(" ", "\\ ")
