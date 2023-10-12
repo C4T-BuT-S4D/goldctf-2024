@@ -8,11 +8,10 @@ services:
     volumes:
       - files:/files
       - cache:/cache
-    ports:
-      - 14141-15164:1337-2360
+    network_mode: host
     restart: unless-stopped
     pids_limit: 16384
-    mem_limit: 2048M
+    mem_limit: 4096M
     cpus: 2
 
   cleaner:
@@ -28,16 +27,16 @@ services:
     mem_limit: 256m
     cpus: 1
 
-  # cache_cleaner:
-  #   build:
-  #     context: cleaner
-  #     dockerfile: Dockerfile
-  #   volumes:
-  #     - cache:/cache
-  #   restart: unless-stopped
-  #   pids_limit: 512
-  #   mem_limit: 256m
-  #   cpus: 1
+  cache_cleaner:
+    build:
+      context: cleaner
+      dockerfile: Dockerfile
+    volumes:
+      - cache:/cache
+    restart: unless-stopped
+    pids_limit: 512
+    mem_limit: 256m
+    cpus: 1
 
 volumes:
   files:

@@ -50,9 +50,9 @@ class Checker(BaseChecker):
         with self.mch.ws() as ws:
             handler = WebSocketHandler(ws=ws)
             self.mch.init_connection(handler)
-            self.assert_eq(
-                self.mch.run_program(handler, program),
+            self.assert_in(
                 flag.encode(),
+                self.mch.run_program(handler, program),
                 "Can't read flag from file",
                 Status.CORRUPT,
             )

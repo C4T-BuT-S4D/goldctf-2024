@@ -4,6 +4,8 @@ from websocket import create_connection, WebSocket
 import ssl
 import base64
 import dataclasses
+import time
+import json
 from random import randint
 
 
@@ -18,36 +20,40 @@ class CheckMachine:
         self.c = checker
 
     def ws(self) -> closing[WebSocket]:
-        return closing(
-            create_connection(
-                f"wss://{self.c.host}:{randint(14141, 15164)}/ws", sslopt={"cert_reqs": ssl.CERT_NONE}
-            )
-        )
+        while True:
+            try:
+                return closing(
+                    create_connection(
+                        f"wss://{self.c.host}:{randint(14141, 14652)}/ws", sslopt={"cert_reqs": ssl.CERT_NONE}
+                    )
+                )
+            except ConnectionRefusedError:
+                time.sleep(1)
 
     def __send(self, handler: WebSocketHandler, data: bytes):
         self.__recvuntil(handler, b"> ")
         for c in data:
             handler.ws.send(b"0" + bytes([c]))
 
-    def __recv(self, handler: WebSocketHandler) -> bytes:
+    def recv(self, handler: WebSocketHandler) -> bytes:
         while True:
             data = handler.ws.recv()
-            if type(data) == str:
+            if isinstance(data, str):
                 data = data.encode()
-            assert type(data) == bytes
+            assert isinstance(data, bytes)
             if data[:1] == b"0":
                 return base64.b64decode(data[1:])
 
     def __recvuntil(self, handler: WebSocketHandler, data: bytes) -> bytes:
         while data not in handler.buffer:
-            handler.buffer += self.__recv(handler)
+            handler.buffer += self.recv(handler)
         pos = handler.buffer.find(data)
         res = handler.buffer[:pos]
         handler.buffer = handler.buffer[pos + len(data):]
         return res
 
-    def init_connection(self, handler: WebSocketHandler):
-        handler.ws.send(b"""{"Arguments": "", "AuthToken": ""}""")
+    def init_connection(self, handler: WebSocketHandler, arguments: str = ""):
+        handler.ws.send(json.dumps({"Arguments": arguments, "AuthToken": ""}).encode())
         handler.ws.send_binary(b"""2{"columns": 0, "rows": 0}""")
 
     def escape(self, program: str) -> str:

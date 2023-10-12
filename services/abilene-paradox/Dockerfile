@@ -3,7 +3,7 @@ FROM ubuntu:22.04@sha256:b492494d8e0113c4ad3fe4528a4b5ff89faa5331f7d52c5c138196f
 RUN apt -y update && apt -y install wget libseccomp-dev gcc
 
 WORKDIR /
-RUN wget https://github.com/yudai/gotty/releases/download/v0.0.12/gotty_linux_amd64.tar.gz
+RUN wget https://github.com/yudai/gotty/releases/download/v1.0.1/gotty_linux_amd64.tar.gz
 RUN tar xvf gotty_linux_amd64.tar.gz
 
 ADD runner/main.c .

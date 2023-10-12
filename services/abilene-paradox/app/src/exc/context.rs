@@ -9,7 +9,7 @@ use crate::{
     lex, prs,
 };
 
-const MAX_TOTAL_FILE_BYTES: usize = 64;
+const MAX_TOTAL_FILE_BYTES: usize = 256;
 const MAX_STRING_LENGTH: usize = 32768;
 const MAX_VARIABLES: usize = 1024;
 const MAX_RECURSION_DEPTH: usize = 64;

@@ -88,6 +88,7 @@ void seccomp()
     seccomp_rule_add(ctx, SCMP_ACT_ALLOW, __NR_clone3, 0);
     seccomp_rule_add(ctx, SCMP_ACT_ALLOW, __NR_close_range, 0);
     seccomp_rule_add(ctx, SCMP_ACT_ALLOW, __NR_faccessat2, 0);
+    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, __NR_ftruncate, 0);
     seccomp_load(ctx);
 }
 
