@@ -11,7 +11,7 @@ RUN gcc main.c -lseccomp -o runner
 
 FROM rust:1.72@sha256:e18a590e3b63b971a1d5f9d91c89ac7d562a9c20279f8776dee8e2d34fc4ea52 as app
 
-RUN apt -y update && apt -y install parallel
+RUN apt -y update && apt -y install parallel psmisc
 
 WORKDIR /app
 ADD app/Cargo.toml app/Cargo.lock app/rust-toolchain .
@@ -31,8 +31,8 @@ ADD gotty.key /
 
 RUN useradd -m -s /bin/false -u 1337 ctf
 
-RUN mkdir -p /files && chown -R ctf:ctf /files && chmod 777 /files
-RUN mkdir -p /cache && chown -R ctf:ctf /cache && chmod 777 /cache
+RUN mkdir -p /files && chmod 777 /files
+RUN mkdir -p /cache && chmod 777 /cache
 
 ADD run.sh run_gotty.sh /
 RUN chmod +x /run.sh /run_gotty.sh
