@@ -1,14 +1,13 @@
-from typing import Annotated, Generic, TypeVar, cast
+from typing import Annotated, cast
 
 import numpy as np
+import pandas as pd
 import pandera as pa
 import pandera.typing as pt
 import pydantic
 import rpyc
 
 from . import config
-
-T = TypeVar("T")
 
 
 class AlloyComposition(pydantic.BaseModel):
@@ -25,6 +24,11 @@ class AlloyComposition(pydantic.BaseModel):
         return self
 
     def restricted(self) -> "AlloyComposition":
+        """
+        Return rpyc-restricted version of the dataclass,
+        safe to be sent to a remote endpoint.
+        """
+
         return cast(
             AlloyComposition,
             rpyc.restricted(
@@ -35,6 +39,11 @@ class AlloyComposition(pydantic.BaseModel):
 
     @classmethod
     def localized(cls, remote: "AlloyComposition") -> "AlloyComposition":
+        """
+        Recreate AlloyComposition dataclass instance from non-trusted instance,
+        revalidating it in the process.
+        """
+
         return cls(
             gold_fr=remote.gold_fr,
             silver_fr=remote.silver_fr,
@@ -53,18 +62,12 @@ class Schema(pa.DataFrameModel):
     fineness: pt.Series[float] = pa.Field(ge=0, le=1000)
 
 
-class DataFrame(pt.DataFrame[T], Generic[T]):
-    def validate(self):
-        Schema.validate(self)
-
-
-class DataSet(pydantic.BaseModel):
-    name: Annotated[str, pydantic.Field(min_length=1)]
-    description: str
-    frame: DataFrame[Schema]
-
-
 class DataConveyor:
+    """
+    Conveyor for working with samples of gold,
+    preparing them for later use with models.
+    """
+
     def __init__(self, rng: np.random.Generator):
         self.rng = rng
 
@@ -74,7 +77,14 @@ class DataConveyor:
         weight_ozt: float,
         max_deviation: float,
         samples: int,
-    ):
+    ) -> pd.DataFrame:
+        """
+        Selects a number of gold samples fitting the specified alloy template,
+        with alloy composition and weight deviating no more than is requested.
+
+        A pandas DataFrame is returned, containing the selected samples.
+        """
+
         if weight_ozt < 0:
             raise ValueError("sample weight should be non-negative")
         elif max_deviation < 0 or max_deviation > 1:
@@ -86,7 +96,7 @@ class DataConveyor:
 
         validated_template = AlloyComposition.localized(template)
 
-        df = DataFrame(
+        df = pd.DataFrame(
             columns=[
                 "gold_ozt",
                 "silver_ozt",
@@ -98,10 +108,14 @@ class DataConveyor:
             ]
         )
 
+        # Array of generated weights deviating no more than max_deviation
+        # from the dezired weight in troy ounces.
         weights = weight_ozt * (
             1 - (2 * max_deviation * self.rng.random(samples)) + max_deviation
         )
 
+        # TODO optimize generation using template alloy by replacing operations
+        # on each sample with operations on an array of samples.
         for i in range(samples):
             sample_alloy_fr = self.__randomize_alloy(validated_template, max_deviation)
             sample_karat = round(sample_alloy_fr[0] * 24, config.KARAT_DIGITS)
@@ -109,7 +123,7 @@ class DataConveyor:
             sample_weight = weights[i]
             sample_alloy_ozt = sample_alloy_fr * sample_weight
 
-            df.loc[i] = [  # type: ignore
+            df.loc[i] = [  # type: ignore # setitem typing is broken for loc
                 sample_alloy_ozt[0],
                 sample_alloy_ozt[1],
                 sample_alloy_ozt[2],
@@ -119,9 +133,20 @@ class DataConveyor:
                 sample_fineness,
             ]
 
-        df.validate()
+        # Perform basic sanity check after dataframe construction.
+        Schema.validate(df)
 
         return df
+
+    def random_alloy_samples(
+        self, weight_ozt: float, max_deviation: float, samples: int
+    ) -> pd.DataFrame:
+        """
+        Selects a number of random gold samples with weight deviating no more than is requested.
+
+        A pandas DataFrame is returned, containing the selected samples.
+        """
+        pass
 
     def __randomize_alloy(
         self, template: AlloyComposition, max_deviation: float
@@ -151,10 +176,15 @@ class DataConveyor:
         return fractions
 
     def restricted(self) -> "DataConveyor":
+        """
+        Return rpyc-restricted version of the conveyor,
+        containing only the publicly exposed endpoints safe for remote use.
+        """
+
         return cast(
             DataConveyor,
             rpyc.restricted(
                 self,
-                ["template_alloy_samples"],
+                ["template_alloy_samples", "random_alloy_samples"],
             ),
         )
