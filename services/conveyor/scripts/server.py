@@ -1,5 +1,4 @@
 import logging
-import secrets
 import sys
 from typing import Annotated
 
@@ -56,9 +55,7 @@ def main():
         port=settings.listen_port,
         logger=rpyc_logger,
         protocol_config=dict(
-            allow_safe_attrs=False,
             allow_exposed_attrs=False,
-            safe_attrs=set(),
             include_local_traceback=False,
             include_local_version=False,
             allow_pickle=False,
