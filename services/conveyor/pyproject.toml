@@ -12,7 +12,7 @@ pandera = "~0.18.0"
 pydantic = "~2.5.3"
 pydantic-settings = "~2.1.0"
 python = "~3.11"
-rpyc = "~5.3.1"
+rpyc = "5.3.1"
 scikit-learn = "~1.4.0"
 structlog = "~24.1.0"
 

@@ -7,7 +7,7 @@ import structlog
 from pydantic import Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-import conveyor
+from conveyor import GoldConveyorService
 
 
 class Settings(BaseSettings):
@@ -52,7 +52,7 @@ def main():
     rpyc_logger.setLevel(logging.WARN)
 
     t = rpyc.ThreadedServer(
-        conveyor.service.GoldConveyorService,
+        GoldConveyorService,
         port=settings.listen_port,
         logger=rpyc_logger,
         protocol_config=dict(

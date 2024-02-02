@@ -4,8 +4,7 @@ from typing import cast
 
 import rpyc
 
-from conveyor.data import AlloyComposition
-from conveyor.service import GoldConveyorService
+from conveyor import AlloyComposition, GoldConveyorService
 
 
 def main():
@@ -23,7 +22,13 @@ def main():
     # Connect to remote, allowing public attribute access in order to properly pass arguments.
     args = argument_parser.parse_args()
     conn: rpyc.Connection = rpyc.connect(
-        host=args.host, port=args.port, config=dict(allow_public_attrs=True)
+        host=args.host,
+        port=args.port,
+        config=dict(
+            allow_public_attrs=True,
+            include_local_traceback=False,  # don't include traceback to save bandwidth
+            include_local_version=False,
+        ),
     )
     service: GoldConveyorService = cast(GoldConveyorService, conn.root)
 

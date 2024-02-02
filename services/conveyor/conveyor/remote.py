@@ -22,3 +22,19 @@ def safe(attrs: set[str]):
         return cls
 
     return wrapper
+
+
+def patch_get_methods():
+    """
+    Monkey-patch rpyc get_methods according to https://github.com/tomerfiliba-org/rpyc/issues/326.
+    """
+
+    import inspect
+
+    def getdoc(*args, **kwargs):
+        return None
+
+    inspect.getdoc = getdoc
+
+
+patch_get_methods()
