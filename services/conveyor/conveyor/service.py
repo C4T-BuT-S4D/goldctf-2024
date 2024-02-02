@@ -7,16 +7,18 @@ import structlog
 
 from . import remote
 from .data import DataConveyor
+from .model import ModelConveyor
 
 
-@remote.safe({"data_conveyor"})
+@remote.safe({"data_conveyor", "model_conveyor"})
 class GoldConveyorService(rpyc.Service):
     def __init__(self):
         self.logger = structlog.stdlib.get_logger("gold-conveyor")
-        self.rng = np.random.default_rng(secrets.randbits(128))
+        self.rng = np.random.RandomState(secrets.randbits(30))
 
         # Attributes exposed by the service
         self.data_conveyor = DataConveyor(self.rng)
+        self.model_conveyor = ModelConveyor(self.rng)
 
     def on_connect(self, conn: rpyc.Connection):
         endpoints = cast(

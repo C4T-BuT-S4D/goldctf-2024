@@ -108,7 +108,7 @@ class DataConveyor:
     preparing them for later use with models.
     """
 
-    def __init__(self, rng: np.random.Generator):
+    def __init__(self, rng: np.random.RandomState):
         self.rng = rng
 
     def template_alloy_samples(
@@ -179,7 +179,9 @@ class DataConveyor:
             )
 
         return DataFrame(
-            pd.concat(dfs, ignore_index=True).sample(frac=1).reset_index(drop=True)
+            pd.concat(dfs, ignore_index=True)
+            .sample(frac=1, random_state=self.rng)
+            .reset_index(drop=True)
         )
 
     def split_samples(
@@ -194,7 +196,14 @@ class DataConveyor:
         if not (proportion >= 0 and proportion <= 1):
             raise ValueError("proportion should be in the range [0.0; 1.0]")
 
-        return [DataFrame(df) for df in train_test_split(*dfs, train_size=proportion)]
+        return [
+            DataFrame(df)
+            for df in train_test_split(
+                *dfs,
+                train_size=proportion,
+                random_state=self.rng,
+            )
+        ]
 
     def __generate_samples(
         self,
@@ -261,7 +270,7 @@ class DataConveyor:
 
         # The resulting shortage must be then redistributed between the present alloy parts.
         shortage = 1 - np.sum(fractions)
-        shortage_distribution = self.rng.random(len(fractions), dtype=np.float64)
+        shortage_distribution = self.rng.random(len(fractions))
         shortage_distribution *= fractions > config.PRECISION
         shortage_distribution /= np.sum(shortage_distribution)
         fractions += shortage * shortage_distribution

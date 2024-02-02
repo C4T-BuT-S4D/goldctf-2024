@@ -57,5 +57,10 @@ def main():
     )
 
     print(
-        f"Train/Test frames shapes:\n - x_train {x_train.shape}\n - y_train {y_train.shape}\n - x_test {x_test.shape}\n - y_test {y_test.shape}"
+        f"Train/Test frames shapes:\n - x_train {x_train.shape}\n - y_train {y_train.shape}\n - x_test {x_test.shape}\n - y_test {y_test.shape}\n"
     )
+
+    # Train model and score it on the test data.
+    model = service.model_conveyor.fit_linear_regression(x_train, y_train)
+    print(f"Train score: {model.score(x_train, y_train)}")
+    print(f"Test score: {model.score(x_test, y_test )}")
