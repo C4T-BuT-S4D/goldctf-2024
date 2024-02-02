@@ -15,7 +15,7 @@ def safe(attrs: set[str]):
     def getter(self, name):
         if name in attrs or name in safe_attrs:
             return getattr(self, name)
-        raise AttributeError(name)
+        raise AttributeError("access denied")
 
     def wrapper(cls: type[T]) -> type[T]:
         setattr(cls, "_rpyc_getattr", getter)
