@@ -1,15 +1,15 @@
-from typing import Annotated, cast
+from typing import Annotated, Callable, cast
 
 import numpy as np
 import pandas as pd
 import pandera as pa
 import pandera.typing as pt
 import pydantic
-import rpyc
 
-from . import config
+from . import config, remote
 
 
+@remote.safe({"gold_fr", "silver_fr", "copper_fr", "platinum_fr"})
 class AlloyComposition(pydantic.BaseModel):
     gold_fr: Annotated[float, pydantic.Field(ge=0, le=1)]
     silver_fr: Annotated[float, pydantic.Field(ge=0, le=1)]
@@ -22,20 +22,6 @@ class AlloyComposition(pydantic.BaseModel):
         if abs(fr - 1.0) > config.PRECISION:
             raise ValueError("alloy composition fractions should add up to 1")
         return self
-
-    def restricted(self) -> "AlloyComposition":
-        """
-        Return rpyc-restricted version of the dataclass,
-        safe to be sent to a remote endpoint.
-        """
-
-        return cast(
-            AlloyComposition,
-            rpyc.restricted(
-                self,
-                ["gold_fr", "silver_fr", "copper_fr", "platinum_fr"],
-            ),
-        )
 
     @classmethod
     def localized(cls, remote: "AlloyComposition") -> "AlloyComposition":
@@ -52,16 +38,61 @@ class AlloyComposition(pydantic.BaseModel):
         )
 
 
-class Schema(pa.DataFrameModel):
-    gold_ozt: pt.Series[float] = pa.Field(ge=0)
-    silver_ozt: pt.Series[float] = pa.Field(ge=0)
-    copper_ozt: pt.Series[float] = pa.Field(ge=0)
-    platinum_ozt: pt.Series[float] = pa.Field(ge=0)
-    troy_ounces: pt.Series[float] = pa.Field(ge=0)
-    karat: pt.Series[float] = pa.Field(ge=0, le=24)
-    fineness: pt.Series[float] = pa.Field(ge=0, le=1000)
+class PredefinedAlloys:
+    YELLOW_GOLD = AlloyComposition(
+        gold_fr=0.75, silver_fr=0.125, copper_fr=0.125, platinum_fr=0
+    )
+
+    RED_GOLD = AlloyComposition(
+        gold_fr=0.75, silver_fr=0, copper_fr=0.25, platinum_fr=0
+    )
+
+    ROSE_GOLD = AlloyComposition(
+        gold_fr=0.75, silver_fr=0.025, copper_fr=0.225, platinum_fr=0
+    )
+
+    PINK_GOLD = AlloyComposition(
+        gold_fr=0.75, silver_fr=0.05, copper_fr=0.2, platinum_fr=0
+    )
+
+    WHITE_GOLD = AlloyComposition(
+        gold_fr=0.75, silver_fr=0, copper_fr=0, platinum_fr=0.25
+    )
 
 
+@remote.safe({"iloc", "head", "shape"})
+class DataFrame(pd.DataFrame):
+    """
+    Specialized dataframe subclassing the usual pandas dataframe.
+    """
+
+    class Schema(pa.DataFrameModel):
+        gold_ozt: pt.Series[float] = pa.Field(ge=0)
+        silver_ozt: pt.Series[float] = pa.Field(ge=0)
+        copper_ozt: pt.Series[float] = pa.Field(ge=0)
+        platinum_ozt: pt.Series[float] = pa.Field(ge=0)
+        troy_ounces: pt.Series[float] = pa.Field(ge=0)
+        karat: pt.Series[float] = pa.Field(ge=0, le=24)
+        fineness: pt.Series[float] = pa.Field(ge=0, le=1000)
+
+    def __init__(self, *args, **kwargs):
+        kwargs["columns"] = [
+            "gold_ozt",
+            "silver_ozt",
+            "copper_ozt",
+            "platinum_ozt",
+            "troy_ounces",
+            "karat",
+            "fineness",
+        ]
+
+        super().__init__(*args, **kwargs)
+
+    def validate(self):
+        DataFrame.Schema.validate(self)
+
+
+@remote.safe({"template_alloy_samples", "random_alloy_samples"})
 class DataConveyor:
     """
     Conveyor for working with samples of gold,
@@ -77,7 +108,7 @@ class DataConveyor:
         weight_ozt: float,
         max_deviation: float,
         samples: int,
-    ) -> pd.DataFrame:
+    ) -> DataFrame:
         """
         Selects a number of gold samples fitting the specified alloy template,
         with alloy composition and weight deviating no more than is requested.
@@ -85,6 +116,54 @@ class DataConveyor:
         A pandas DataFrame is returned, containing the selected samples.
         """
 
+        validated_template = AlloyComposition.localized(template)
+
+        # TODO optimize generation using template alloy by replacing operations
+        # on each sample with operations on an array of samples.
+        # Unfortunately, this means that the sample generation process would be different for random_alloy_samples.
+        return self.__generate_samples(
+            weight_ozt,
+            max_deviation,
+            samples,
+            lambda: self.__randomize_alloy(validated_template, max_deviation),
+        )
+
+    def random_alloy_samples(
+        self, weight_ozt: float, max_deviation: float, samples: int
+    ) -> DataFrame:
+        """
+        Selects a number of random gold samples with weight deviating no more than is requested.
+
+        A pandas DataFrame is returned, containing the selected samples.
+        """
+
+        return self.__generate_samples(
+            weight_ozt,
+            max_deviation,
+            samples,
+            lambda: self.__randomize_alloy(
+                self.rng.choice(
+                    np.array(
+                        [
+                            PredefinedAlloys.YELLOW_GOLD,
+                            PredefinedAlloys.RED_GOLD,
+                            PredefinedAlloys.ROSE_GOLD,
+                            PredefinedAlloys.PINK_GOLD,
+                            PredefinedAlloys.WHITE_GOLD,
+                        ]
+                    )
+                ),
+                max_deviation,
+            ),
+        )
+
+    def __generate_samples(
+        self,
+        weight_ozt: float,
+        max_deviation: float,
+        samples: int,
+        generator: Callable[[], np.ndarray],
+    ) -> DataFrame:
         if weight_ozt < 0:
             raise ValueError("sample weight should be non-negative")
         elif max_deviation < 0 or max_deviation > 1:
@@ -94,30 +173,15 @@ class DataConveyor:
                 f"a non-negative number of samples less than {config.MAX_SAMPLES} should be specified"
             )
 
-        validated_template = AlloyComposition.localized(template)
-
-        df = pd.DataFrame(
-            columns=[
-                "gold_ozt",
-                "silver_ozt",
-                "copper_ozt",
-                "platinum_ozt",
-                "troy_ounces",
-                "karat",
-                "fineness",
-            ]
-        )
-
         # Array of generated weights deviating no more than max_deviation
         # from the dezired weight in troy ounces.
         weights = weight_ozt * (
             1 - (2 * max_deviation * self.rng.random(samples)) + max_deviation
         )
 
-        # TODO optimize generation using template alloy by replacing operations
-        # on each sample with operations on an array of samples.
+        df = DataFrame()
         for i in range(samples):
-            sample_alloy_fr = self.__randomize_alloy(validated_template, max_deviation)
+            sample_alloy_fr = generator()
             sample_karat = round(sample_alloy_fr[0] * 24, config.KARAT_DIGITS)
             sample_fineness = round(sample_alloy_fr[0] * 1000, config.FINENESS_DIGITS)
             sample_weight = weights[i]
@@ -134,19 +198,9 @@ class DataConveyor:
             ]
 
         # Perform basic sanity check after dataframe construction.
-        Schema.validate(df)
+        df.validate()
 
         return df
-
-    def random_alloy_samples(
-        self, weight_ozt: float, max_deviation: float, samples: int
-    ) -> pd.DataFrame:
-        """
-        Selects a number of random gold samples with weight deviating no more than is requested.
-
-        A pandas DataFrame is returned, containing the selected samples.
-        """
-        pass
 
     def __randomize_alloy(
         self, template: AlloyComposition, max_deviation: float
@@ -174,17 +228,3 @@ class DataConveyor:
         fractions += shortage * shortage_distribution
 
         return fractions
-
-    def restricted(self) -> "DataConveyor":
-        """
-        Return rpyc-restricted version of the conveyor,
-        containing only the publicly exposed endpoints safe for remote use.
-        """
-
-        return cast(
-            DataConveyor,
-            rpyc.restricted(
-                self,
-                ["template_alloy_samples", "random_alloy_samples"],
-            ),
-        )

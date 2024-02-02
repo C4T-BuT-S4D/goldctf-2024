@@ -7,6 +7,7 @@ import rpyc
 import structlog
 from sklearn.model_selection import train_test_split
 
+from . import remote
 from .data import DataConveyor
 
 
@@ -46,16 +47,14 @@ class PipelineBuilder(rpyc.Service):
         )
 
 
-PUBLIC_ATTRS = set(["data_conveyor"])
-
-
+@remote.safe({"data_conveyor"})
 class GoldConveyorService(rpyc.Service):
     def __init__(self):
         self.logger = structlog.stdlib.get_logger("gold-conveyor")
         self.rng = np.random.default_rng(secrets.randbits(128))
 
         # Attributes exposed by the service
-        self.data_conveyor = DataConveyor(self.rng).restricted()
+        self.data_conveyor = DataConveyor(self.rng)
 
     def on_connect(self, conn: rpyc.Connection):
         endpoints = cast(
@@ -72,8 +71,3 @@ class GoldConveyorService(rpyc.Service):
 
     def on_disconnect(self, conn):
         self.logger.info("client disconnected")
-
-    def _rpyc_getattr(self, name):
-        if name in PUBLIC_ATTRS:
-            return getattr(self, name)
-        raise AttributeError(name)

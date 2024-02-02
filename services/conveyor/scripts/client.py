@@ -23,13 +23,11 @@ def main():
     conn: rpyc.Connection = rpyc.connect(host=args.host, port=args.port)
     service: GoldConveyorService = cast(GoldConveyorService, conn.root)
 
-    print(
-        service.data_conveyor.template_alloy_samples(
-            AlloyComposition(
-                gold_fr=0.83, silver_fr=0.05, copper_fr=0.02, platinum_fr=0.1
-            ).restricted(),
-            1,
-            0.01,
-            100,
-        )
+    df = service.data_conveyor.template_alloy_samples(
+        AlloyComposition(gold_fr=0.83, silver_fr=0.05, copper_fr=0.02, platinum_fr=0.1),
+        1,
+        0.01,
+        100,
     )
+
+    print(df.iloc[15:30])

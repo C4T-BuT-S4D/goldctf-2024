@@ -13,6 +13,7 @@ import conveyor
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="conveyor_")
 
+    debug: Annotated[bool, Field()] = False
     listen_port: Annotated[int, Field()]
 
 
@@ -55,9 +56,10 @@ def main():
         port=settings.listen_port,
         logger=rpyc_logger,
         protocol_config=dict(
+            allow_safe_attrs=True,
             allow_exposed_attrs=False,
-            include_local_traceback=False,
-            include_local_version=False,
+            include_local_traceback=settings.debug,
+            include_local_version=settings.debug,
             allow_pickle=False,
         ),
     )
