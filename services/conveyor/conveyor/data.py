@@ -1,15 +1,15 @@
-from typing import Annotated, Callable, cast
+from typing import Annotated, Callable
 
 import numpy as np
 import pandas as pd
 import pandera as pa
 import pandera.typing as pt
 import pydantic
+from sklearn.model_selection import train_test_split
 
 from . import config, remote
 
 
-@remote.safe({"gold_fr", "silver_fr", "copper_fr", "platinum_fr"})
 class AlloyComposition(pydantic.BaseModel):
     gold_fr: Annotated[float, pydantic.Field(ge=0, le=1)]
     silver_fr: Annotated[float, pydantic.Field(ge=0, le=1)]
@@ -76,15 +76,17 @@ class DataFrame(pd.DataFrame):
         fineness: pt.Series[float] = pa.Field(ge=0, le=1000)
 
     def __init__(self, *args, **kwargs):
-        kwargs["columns"] = [
-            "gold_ozt",
-            "silver_ozt",
-            "copper_ozt",
-            "platinum_ozt",
-            "troy_ounces",
-            "karat",
-            "fineness",
-        ]
+        # Check to avoid creating NaN columns when casting existing pandas DataFrame to this one.
+        if len(args) == 0:
+            kwargs["columns"] = [
+                "gold_ozt",
+                "silver_ozt",
+                "copper_ozt",
+                "platinum_ozt",
+                "troy_ounces",
+                "karat",
+                "fineness",
+            ]
 
         super().__init__(*args, **kwargs)
 
@@ -92,7 +94,14 @@ class DataFrame(pd.DataFrame):
         DataFrame.Schema.validate(self)
 
 
-@remote.safe({"template_alloy_samples", "random_alloy_samples"})
+@remote.safe(
+    {
+        "template_alloy_samples",
+        "random_alloy_samples",
+        "concat_samples",
+        "split_samples",
+    }
+)
 class DataConveyor:
     """
     Conveyor for working with samples of gold,
@@ -157,6 +166,36 @@ class DataConveyor:
             ),
         )
 
+    def concat_samples(self, *dfs: pd.DataFrame) -> DataFrame:
+        """
+        Concatentates multiple sample DataFrames vertically.
+
+        The total number of samples in the resulting DataFrame should not be more than is allowed.
+        """
+
+        if sum(map(len, dfs)) > config.MAX_SAMPLES:
+            raise ValueError(
+                f"total number of samples after concatenating dataframes should not be more than {config.MAX_SAMPLES}"
+            )
+
+        return DataFrame(
+            pd.concat(dfs, ignore_index=True).sample(frac=1).reset_index(drop=True)
+        )
+
+    def split_samples(
+        self, *dfs: pd.DataFrame, proportion: float
+    ) -> list[pd.DataFrame]:
+        """
+        Splits multiple sample DataFrames horizontally according to the specified proportion.
+
+        The first part of each split contains the specified proportion, the other part contains 1-proportion.
+        """
+
+        if not (proportion >= 0 and proportion <= 1):
+            raise ValueError("proportion should be in the range [0.0; 1.0]")
+
+        return [DataFrame(df) for df in train_test_split(*dfs, train_size=proportion)]
+
     def __generate_samples(
         self,
         weight_ozt: float,
@@ -170,7 +209,7 @@ class DataConveyor:
             raise ValueError("max deviation should be a fraction")
         elif samples < 0 or samples > config.MAX_SAMPLES:
             raise ValueError(
-                f"a non-negative number of samples less than {config.MAX_SAMPLES} should be specified"
+                f"a non-negative number of samples no more than {config.MAX_SAMPLES} should be specified"
             )
 
         # Array of generated weights deviating no more than max_deviation

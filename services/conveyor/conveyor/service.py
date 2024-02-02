@@ -1,50 +1,12 @@
 import secrets
-from dataclasses import dataclass
 from typing import cast
 
 import numpy as np
 import rpyc
 import structlog
-from sklearn.model_selection import train_test_split
 
 from . import remote
 from .data import DataConveyor
-
-
-@dataclass
-class Dataset:
-    x: list[float]
-    y: list[float]
-
-    def restricted(self) -> "Dataset":
-        return rpyc.restricted(self, ["x", "y"])
-
-
-@rpyc.service
-class PipelineBuilder(rpyc.Service):
-    @rpyc.exposed
-    def build_dataset(self, x: list[float], y: list[float]) -> Dataset:
-        if len(x) != len(y):
-            raise ValueError("datasets should be built from x and y of the same size")
-
-        # todo save to storage
-        return Dataset(x, y).restricted()
-
-    @rpyc.exposed
-    def train_test_split(
-        self, dataset: Dataset, test_proportion: float
-    ) -> tuple[Dataset, Dataset]:
-        if not (test_proportion >= 0 and test_proportion <= 1):
-            raise ValueError("test_proportion should be in the range [0.0; 1.0]")
-
-        x_train, x_test, y_train, y_test = train_test_split(
-            dataset.x, dataset.y, test_size=test_proportion
-        )
-
-        return (
-            Dataset(x_train, y_train).restricted(),
-            Dataset(x_test, y_test).restricted(),
-        )
 
 
 @remote.safe({"data_conveyor"})
