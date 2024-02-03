@@ -1,20 +1,21 @@
 import logging
 import sys
-from typing import Annotated
 
 import rpyc
 import structlog
-from pydantic import Field, ValidationError
+from pydantic import RedisDsn, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from rpyc.utils.helpers import classpartial
 
-from conveyor import GoldConveyorService
+from conveyor import GoldConveyorService, storage
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="conveyor_")
 
-    debug: Annotated[bool, Field()] = False
-    listen_port: Annotated[int, Field()]
+    debug: bool = False
+    listen_port: int
+    redis_url: RedisDsn
 
 
 def main():
@@ -46,13 +47,19 @@ def main():
             )
         exit(1)
 
+    try:
+        repository = storage.Repository(str(settings.redis_url))
+    except Exception as err:
+        logger.critical("failed to initialize redis-based repository", error=str(err))
+        exit(1)
+
     logger.error("starting conveyor service", port=settings.listen_port)
 
     rpyc_logger = structlog.stdlib.get_logger("rpyc")
     rpyc_logger.setLevel(logging.WARN)
 
     t = rpyc.ThreadedServer(
-        GoldConveyorService,
+        classpartial(GoldConveyorService, repository),
         port=settings.listen_port,
         logger=rpyc_logger,
         protocol_config=dict(
