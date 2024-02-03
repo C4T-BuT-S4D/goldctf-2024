@@ -35,16 +35,21 @@ def main():
     # Select samples of different origins and combine them.
     custom_samples = service.data_conveyor.template_alloy_samples(
         AlloyComposition(gold_fr=0.83, silver_fr=0.05, copper_fr=0.02, platinum_fr=0.1),
-        weight_ozt=1,
+        weight_ozt=5,
         max_deviation=0.01,
-        samples=60,
+        samples=50,
     )
     random_samples = service.data_conveyor.random_alloy_samples(
-        weight_ozt=1, max_deviation=0.005, samples=20
+        weight_ozt=2, max_deviation=0.005, samples=50
     )
     samples = service.data_conveyor.concat_samples(custom_samples, random_samples)
 
     print(f"Samples:\n{samples.head()}\n")
+
+    # Normalize samples before working with them.
+    samples = service.data_conveyor.normalize_sample_weights(samples)
+
+    print(f"Normalized samples:\n{samples.head()}\n")
 
     # Split them in preparation for training and testing.
     x, y = (
@@ -63,4 +68,8 @@ def main():
     # Train model and score it on the test data.
     model = service.model_conveyor.fit_linear_regression(x_train, y_train)
     print(f"Train score: {model.score(x_train, y_train)}")
-    print(f"Test score: {model.score(x_test, y_test )}")
+    print(f"Test score: {model.score(x_test, y_test)}")
+
+    prediction = model.predict(x_test)
+    print(f"Test MAE: {service.model_conveyor.mean_absolute_error(y_test, prediction)}")
+    print(f"Test MSA: {service.model_conveyor.mean_squared_error(y_test, prediction)}")

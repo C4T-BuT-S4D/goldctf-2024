@@ -98,6 +98,7 @@ class DataFrame(pd.DataFrame):
     {
         "template_alloy_samples",
         "random_alloy_samples",
+        "normalize_sample_weights",
         "concat_samples",
         "split_samples",
     }
@@ -107,6 +108,16 @@ class DataConveyor:
     Conveyor for working with samples of gold,
     preparing them for later use with models.
     """
+
+    RANDOM_ALLOYS = np.array(
+        [
+            PredefinedAlloys.YELLOW_GOLD,
+            PredefinedAlloys.RED_GOLD,
+            PredefinedAlloys.ROSE_GOLD,
+            PredefinedAlloys.PINK_GOLD,
+            PredefinedAlloys.WHITE_GOLD,
+        ]
+    )
 
     def __init__(self, rng: np.random.RandomState):
         self.rng = rng
@@ -151,20 +162,30 @@ class DataConveyor:
             max_deviation,
             samples,
             lambda: self.__randomize_alloy(
-                self.rng.choice(
-                    np.array(
-                        [
-                            PredefinedAlloys.YELLOW_GOLD,
-                            PredefinedAlloys.RED_GOLD,
-                            PredefinedAlloys.ROSE_GOLD,
-                            PredefinedAlloys.PINK_GOLD,
-                            PredefinedAlloys.WHITE_GOLD,
-                        ]
-                    )
-                ),
+                self.rng.choice(DataConveyor.RANDOM_ALLOYS),
                 max_deviation,
             ),
         )
+
+    def normalize_sample_weights(self, df: pd.DataFrame) -> DataFrame:
+        """
+        Scale sample alloy composition to 1 troy ounce.
+        This method works even when not all of the alloy components are present in the dataframe columns.
+        """
+
+        if "troy_ounces" not in df.columns:
+            raise ValueError("troy_ounces column must be present for normalization")
+
+        weights = df["troy_ounces"]
+        components = ["gold_ozt", "silver_ozt", "copper_ozt", "platinum_ozt"]
+
+        for component in components:
+            if component in df.columns:
+                df[component] /= weights
+
+        df["troy_ounces"] = 1.0
+
+        return DataFrame(df)
 
     def concat_samples(self, *dfs: pd.DataFrame) -> DataFrame:
         """
