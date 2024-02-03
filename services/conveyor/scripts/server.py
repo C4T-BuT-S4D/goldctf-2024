@@ -1,5 +1,6 @@
 import logging
 import sys
+from datetime import timedelta
 
 import rpyc
 import structlog
@@ -14,6 +15,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="conveyor_")
 
     debug: bool = False
+    data_ttl: timedelta = timedelta(minutes=30)
     listen_port: int
     redis_url: RedisDsn
 
@@ -48,7 +50,9 @@ def main():
         exit(1)
 
     try:
-        repository = storage.Repository(str(settings.redis_url))
+        repository = storage.Repository(
+            str(settings.redis_url), round(settings.data_ttl.total_seconds())
+        )
     except Exception as err:
         logger.critical("failed to initialize redis-based repository", error=str(err))
         exit(1)
