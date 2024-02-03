@@ -92,6 +92,7 @@ class GoldConveyorService(rpyc.Service):
 
         self.account_id = account_id
         self.__logger_with_account_id()
+        self.logger.info("created new account")
 
         return GoldConveyorService.__encode_access_key(access_key)
 
@@ -120,6 +121,7 @@ class GoldConveyorService(rpyc.Service):
 
         self.account_id = result
         self.__logger_with_account_id()
+        self.logger.info("client authenticated")
 
     def save_dataset(self, df: pd.DataFrame, name: str, description: str):
         """
@@ -157,6 +159,8 @@ class GoldConveyorService(rpyc.Service):
                 stack_info=True,
             )
             raise UNEXPECTED_ERROR
+
+        self.logger.info("saved new dataset", file_id=str(file_id), name=name)
 
     def list_datasets(self) -> list[DataSet]:
         """
