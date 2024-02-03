@@ -22,6 +22,9 @@ class RedisRepository:
         )
         self.redis.ping()
 
+    def close(self):
+        self.redis.close()
+
     def save_account_creds(self, account_id: UUID, access_key: bytes) -> bool:
         """
         Returns true if access_key wasn't previously bound to any account_id.

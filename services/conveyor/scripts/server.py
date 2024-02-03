@@ -1,5 +1,8 @@
 import logging
+import signal
 import sys
+import threading
+import time
 from datetime import timedelta
 from pathlib import Path
 
@@ -66,12 +69,12 @@ def main():
         logger.critical("failed to initialize file storage", error=str(err))
         exit(1)
 
-    logger.error("starting conveyor service", port=settings.listen_port)
+    logger.warn("starting conveyor service", port=settings.listen_port)
 
     rpyc_logger = structlog.stdlib.get_logger("rpyc")
     rpyc_logger.setLevel(logging.WARN)
 
-    t = rpyc.ThreadedServer(
+    server = rpyc.ThreadedServer(
         classpartial(GoldConveyorService, repository, files),
         port=settings.listen_port,
         logger=rpyc_logger,
@@ -83,4 +86,26 @@ def main():
             allow_pickle=False,
         ),
     )
-    t.start()
+
+    alive = True
+
+    def shutdown(*_):
+        nonlocal alive
+        alive = False
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, shutdown)
+
+    def shutdown_watcher():
+        while alive:
+            time.sleep(1)
+
+        logger.warn("shutting down conveyor service")
+
+        server.close()
+        repository.close()
+
+    shutdown_thread = threading.Thread(target=shutdown_watcher)
+    shutdown_thread.start()
+
+    server.start()
