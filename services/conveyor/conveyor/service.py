@@ -1,27 +1,50 @@
 import secrets
-import traceback
 from base64 import b85decode, b85encode
+from dataclasses import dataclass
 from typing import Optional, cast
 from uuid import UUID, uuid4
 
 import numpy as np
+import pandas as pd
 import rpyc
 import structlog
 
 from . import config, remote, storage
-from .data import DataConveyor
+from .data import DataConveyor, DataFrame
 from .model import ModelConveyor
 
 UNEXPECTED_ERROR = Exception("unexpected error has occurred, please retry later")
+UNAUTHENTICATED_ERROR = Exception("authentication required")
 INVALID_ACCESS_KEY_ERROR = ValueError("invalid access key provided")
 
 
-@remote.safe({"data_conveyor", "model_conveyor", "create_account", "authenticate"})
+@dataclass
+class DataSet:
+    name: str
+    description: str
+
+    @classmethod
+    def from_repository(cls, dataset: storage.DataSet) -> "DataSet":
+        return cls(name=dataset.name, description=dataset.description)
+
+
+@remote.safe(
+    {
+        "data_conveyor",
+        "model_conveyor",
+        "create_account",
+        "authenticate",
+        "save_dataset",
+        "list_datasets",
+        "load_dataset",
+    }
+)
 class GoldConveyorService(rpyc.Service):
-    def __init__(self, repository: storage.Repository):
+    def __init__(self, repository: storage.RedisRepository, files: storage.FileStorage):
+        self.repository = repository
+        self.files = files
         self.logger = structlog.stdlib.get_logger("gold-conveyor")
         self.rng = np.random.RandomState(secrets.randbits(30))
-        self.repository = repository
         self.account_id: Optional[UUID] = None  # set when client has authenticated
 
         # Attributes exposed by the service
@@ -60,7 +83,7 @@ class GoldConveyorService(rpyc.Service):
             self.logger.error(
                 "unexpectedly failed to save account credentials to repository",
                 error=str(err),
-                stacktrace=traceback.format_exc(),
+                stack_info=True,
             )
             raise UNEXPECTED_ERROR
 
@@ -68,6 +91,7 @@ class GoldConveyorService(rpyc.Service):
             raise Exception("credential generation has failed, please retry")
 
         self.account_id = account_id
+        self.__logger_with_account_id()
 
         return GoldConveyorService.__encode_access_key(access_key)
 
@@ -87,7 +111,7 @@ class GoldConveyorService(rpyc.Service):
             self.logger.error(
                 "unexpectedly failed to authenticate client",
                 error=str(err),
-                stacktrace=traceback.format_exc(),
+                stack_info=True,
             )
             raise UNEXPECTED_ERROR
 
@@ -95,6 +119,105 @@ class GoldConveyorService(rpyc.Service):
             raise INVALID_ACCESS_KEY_ERROR
 
         self.account_id = result
+        self.__logger_with_account_id()
+
+    def save_dataset(self, df: pd.DataFrame, name: str, description: str):
+        """
+        Save dataframe as dataset with specified name.
+        This call requires authentication.
+        """
+
+        if self.account_id is None:
+            raise UNAUTHENTICATED_ERROR
+
+        file_id = uuid4()
+
+        try:
+            with self.files.open_write(file_id) as f:
+                df.to_feather(f)
+        except Exception as err:
+            self.logger.error(
+                "unexpectedly failed to save dataframe to file",
+                file_id=str(file_id),
+                error=str(err),
+                stack_info=True,
+            )
+            raise UNEXPECTED_ERROR
+
+        try:
+            self.repository.save_dataset(
+                self.account_id, storage.DataSet(name, description, file_id)
+            )
+        except Exception as err:
+            self.logger.error(
+                "unexpectedly failed to save dataset info to repository",
+                file_id=str(file_id),
+                name=name,
+                error=str(err),
+                stack_info=True,
+            )
+            raise UNEXPECTED_ERROR
+
+    def list_datasets(self) -> list[DataSet]:
+        """
+        Return names of saved datasets.
+        This call requires authentication.
+        """
+
+        if self.account_id is None:
+            raise UNAUTHENTICATED_ERROR
+
+        try:
+            datasets = self.repository.list_datasets(self.account_id)
+        except Exception as err:
+            self.logger.error(
+                "unexpectedly failed to list datasets in repository",
+                error=str(err),
+                stack_info=True,
+            )
+            raise UNEXPECTED_ERROR
+
+        return list(map(DataSet.from_repository, datasets))
+
+    def load_dataset(self, name: str) -> DataFrame:
+        """
+        Load dataframe from dataset with the specified name.
+        This call requires authentication.
+        """
+
+        if self.account_id is None:
+            raise UNAUTHENTICATED_ERROR
+
+        try:
+            dataset = self.repository.get_dataset(self.account_id, name)
+        except Exception as err:
+            self.logger.error(
+                "unexpectedly failed to get dataset from repository",
+                error=str(err),
+                stack_info=True,
+            )
+            raise UNEXPECTED_ERROR
+
+        if dataset is None:
+            raise KeyError("no dataset with such name exists")
+
+        try:
+            with self.files.open_read(dataset.file_id) as f:
+                df = pd.read_feather(f)
+        except Exception as err:
+            self.logger.error(
+                "unexpectedly failed to read dataframe from file",
+                file_id=dataset.file_id,
+                name=dataset.name,
+                error=str(err),
+                stack_info=True,
+            )
+            raise UNEXPECTED_ERROR
+
+        return DataFrame(df)
+
+    def __logger_with_account_id(self):
+        self.logger = self.logger.bind(account_id=str(self.account_id))
 
     @staticmethod
     def __encode_access_key(access_key: bytes) -> str:

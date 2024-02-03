@@ -1,6 +1,7 @@
 import logging
 import sys
 from datetime import timedelta
+from pathlib import Path
 
 import rpyc
 import structlog
@@ -16,6 +17,7 @@ class Settings(BaseSettings):
 
     debug: bool = False
     data_ttl: timedelta = timedelta(minutes=30)
+    data_dir: Path
     listen_port: int
     redis_url: RedisDsn
 
@@ -32,6 +34,7 @@ def main():
             structlog.stdlib.add_logger_name,
             structlog.stdlib.add_log_level,
             structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.StackInfoRenderer(),
             structlog.processors.EventRenamer("message"),
             structlog.processors.JSONRenderer(),
         ],
@@ -50,11 +53,17 @@ def main():
         exit(1)
 
     try:
-        repository = storage.Repository(
+        repository = storage.RedisRepository(
             str(settings.redis_url), round(settings.data_ttl.total_seconds())
         )
     except Exception as err:
         logger.critical("failed to initialize redis-based repository", error=str(err))
+        exit(1)
+
+    try:
+        files = storage.FileStorage(settings.data_dir)
+    except Exception as err:
+        logger.critical("failed to initialize file storage", error=str(err))
         exit(1)
 
     logger.error("starting conveyor service", port=settings.listen_port)
@@ -63,7 +72,7 @@ def main():
     rpyc_logger.setLevel(logging.WARN)
 
     t = rpyc.ThreadedServer(
-        classpartial(GoldConveyorService, repository),
+        classpartial(GoldConveyorService, repository, files),
         port=settings.listen_port,
         logger=rpyc_logger,
         protocol_config=dict(
