@@ -1,3 +1,6 @@
+import io
+import pickle
+
 import numpy as np
 import numpy.typing as npt
 from sklearn import linear_model, metrics
@@ -5,13 +8,24 @@ from sklearn import linear_model, metrics
 from . import config, remote
 
 
-@remote.safe({"predict", "score"})
-class LinearRegression(linear_model.LinearRegression):
+@remote.safe({"predict", "score", "name", "description"})
+class Model:
+    name: str
+    description: str
+
+    def save(self, file: io.BufferedIOBase):
+        pickle.dump(self, file)
+
+    @staticmethod
+    def load(file: io.BufferedIOBase) -> "Model":
+        return pickle.load(file)
+
+
+class LinearRegression(linear_model.LinearRegression, Model):
     pass
 
 
-@remote.safe({"predict", "score"})
-class RidgeRegression(linear_model.Ridge):
+class RidgeRegression(linear_model.Ridge, Model):
     pass
 
 

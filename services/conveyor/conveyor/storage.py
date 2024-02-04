@@ -13,6 +13,12 @@ class DataSet:
     file_id: UUID
 
 
+@dataclass
+class Model:
+    name: str
+    file_id: UUID
+
+
 class RedisRepository:
     def __init__(self, redis_url: str, ttl_seconds: int):
         self.ttl = ttl_seconds
@@ -97,6 +103,43 @@ class RedisRepository:
 
         return RedisRepository.__decode_dataset(name, result)
 
+    def save_model(self, account_id: UUID, model: Model):
+        """
+        Saves the model entry for the specified account.
+        """
+
+        key = RedisRepository.__models_key(account_id)
+
+        pl = self.redis.pipeline(transaction=True)
+        pl.hset(key, model.name, str(model.file_id))
+        pl.expire(key, self.ttl)
+        pl.execute()
+
+    def list_models(self, account_id: UUID) -> list[Model]:
+        """
+        List models saved for the specified account.
+        """
+
+        result = cast(
+            dict[str, str], self.redis.hgetall(RedisRepository.__models_key(account_id))
+        )
+
+        return [Model(name=name, file_id=UUID(value)) for name, value in result.items()]
+
+    def get_model(self, account_id: UUID, name: str) -> Optional[Model]:
+        """
+        Returns the model entry saved for the specified account with such name, or None.
+        """
+
+        result = cast(
+            Optional[str],
+            self.redis.hget(RedisRepository.__models_key(account_id), name),
+        )
+        if result is None:
+            return None
+
+        return Model(name=name, file_id=UUID(result))
+
     @staticmethod
     def __credentials_key(key: bytes) -> str:
         return f"credentials:{key.hex()}"
@@ -104,6 +147,10 @@ class RedisRepository:
     @staticmethod
     def __datasets_key(account_id: UUID) -> str:
         return f"datasets:{account_id}"
+
+    @staticmethod
+    def __models_key(account_id: UUID) -> str:
+        return f"models:{account_id}"
 
     @staticmethod
     def __encode_dataset(dataset: DataSet) -> str:

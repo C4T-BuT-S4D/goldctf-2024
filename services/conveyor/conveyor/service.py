@@ -11,7 +11,7 @@ import structlog
 
 from . import config, remote, storage
 from .data import DataConveyor, DataFrame
-from .model import ModelConveyor
+from .model import Model, ModelConveyor
 
 UNEXPECTED_ERROR = Exception("unexpected error has occurred, please retry later")
 UNAUTHENTICATED_ERROR = Exception("authentication required")
@@ -37,6 +37,9 @@ class DataSet:
         "save_dataset",
         "list_datasets",
         "load_dataset",
+        "save_model",
+        "list_models",
+        "load_model",
     }
 )
 class GoldConveyorService(rpyc.Service):
@@ -101,6 +104,8 @@ class GoldConveyorService(rpyc.Service):
         Authenticate using the provided access key.
         """
 
+        access_key = str(access_key)
+
         try:
             access_key_bytes = GoldConveyorService.__decode_access_key(access_key)
         except ValueError:
@@ -132,6 +137,8 @@ class GoldConveyorService(rpyc.Service):
         if self.account_id is None:
             raise UNAUTHENTICATED_ERROR
 
+        name = str(name)
+        description = str(description)
         file_id = uuid4()
 
         try:
@@ -148,7 +155,8 @@ class GoldConveyorService(rpyc.Service):
 
         try:
             self.repository.save_dataset(
-                self.account_id, storage.DataSet(name, description, file_id)
+                self.account_id,
+                storage.DataSet(name=name, description=description, file_id=file_id),
             )
         except Exception as err:
             self.logger.error(
@@ -164,7 +172,7 @@ class GoldConveyorService(rpyc.Service):
 
     def list_datasets(self) -> list[DataSet]:
         """
-        Return names of saved datasets.
+        Return names and descriptions of saved datasets.
         This call requires authentication.
         """
 
@@ -191,6 +199,8 @@ class GoldConveyorService(rpyc.Service):
 
         if self.account_id is None:
             raise UNAUTHENTICATED_ERROR
+
+        name = str(name)
 
         try:
             dataset = self.repository.get_dataset(self.account_id, name)
@@ -219,6 +229,110 @@ class GoldConveyorService(rpyc.Service):
             raise UNEXPECTED_ERROR
 
         return DataFrame(df)
+
+    def save_model(self, model: Model, name: str, description: str):
+        """
+        Save model with specified name.
+        This call requires authentication.
+        """
+
+        if self.account_id is None:
+            raise UNAUTHENTICATED_ERROR
+
+        name = str(name)
+        description = str(description)
+        file_id = uuid4()
+
+        model.name = name
+        model.description = description
+
+        try:
+            with self.files.open_write(file_id) as f:
+                model.save(f)
+        except Exception as err:
+            self.logger.error(
+                "unexpectedly failed to save model to file",
+                file_id=str(file_id),
+                error=str(err),
+                stack_info=True,
+            )
+            raise UNEXPECTED_ERROR
+
+        try:
+            self.repository.save_model(
+                self.account_id, storage.Model(name=name, file_id=file_id)
+            )
+        except Exception as err:
+            self.logger.error(
+                "unexpectedly failed to save model info to repository",
+                file_id=str(file_id),
+                name=name,
+                error=str(err),
+                stack_info=True,
+            )
+            raise UNEXPECTED_ERROR
+
+        self.logger.info("saved new model", file_id=str(file_id), name=name)
+
+    def list_models(self) -> list[str]:
+        """
+        Return names of saved models.
+        This call requires authentication.
+        """
+
+        if self.account_id is None:
+            raise UNAUTHENTICATED_ERROR
+
+        try:
+            models = self.repository.list_models(self.account_id)
+        except Exception as err:
+            self.logger.error(
+                "unexpectedly failed to list models in repository",
+                error=str(err),
+                stack_info=True,
+            )
+            raise UNEXPECTED_ERROR
+
+        return [m.name for m in models]
+
+    def load_model(self, name: str) -> Model:
+        """
+        Load model with the specified name.
+        This call requires authentication.
+        """
+
+        if self.account_id is None:
+            raise UNAUTHENTICATED_ERROR
+
+        name = str(name)
+
+        try:
+            model_info = self.repository.get_model(self.account_id, name)
+        except Exception as err:
+            self.logger.error(
+                "unexpectedly failed to get model from repository",
+                error=str(err),
+                stack_info=True,
+            )
+            raise UNEXPECTED_ERROR
+
+        if model_info is None:
+            raise KeyError("no model with such name exists")
+
+        try:
+            with self.files.open_read(model_info.file_id) as f:
+                model = Model.load(f)
+        except Exception as err:
+            self.logger.error(
+                "unexpectedly failed to read dataframe from file",
+                file_id=model_info.file_id,
+                name=model_info.name,
+                error=str(err),
+                stack_info=True,
+            )
+            raise UNEXPECTED_ERROR
+
+        return model
 
     def __logger_with_account_id(self):
         self.logger = self.logger.bind(account_id=str(self.account_id))

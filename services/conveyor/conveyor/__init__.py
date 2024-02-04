@@ -8,13 +8,14 @@ __all__ = [
     "DataConveyor",
     "DataFrame",
     "PredefinedAlloys",
-    "ModelConveyor",
     "LinearRegression",
+    "Model",
+    "ModelConveyor",
     "RidgeRegression",
     "GoldConveyorService",
 ]
 
 from . import data, model, remote, service, storage
 from .data import AlloyComposition, DataConveyor, DataFrame, PredefinedAlloys
-from .model import LinearRegression, ModelConveyor, RidgeRegression
+from .model import LinearRegression, Model, ModelConveyor, RidgeRegression
 from .service import GoldConveyorService
