@@ -30,6 +30,7 @@ class DataSet:
 
 @remote.safe(
     {
+        "account_id",
         "data_conveyor",
         "model_conveyor",
         "create_account",
@@ -48,9 +49,9 @@ class GoldConveyorService(rpyc.Service):
         self.files = files
         self.logger = structlog.stdlib.get_logger("gold-conveyor")
         self.rng = np.random.RandomState(secrets.randbits(30))
-        self.account_id: Optional[UUID] = None  # set when client has authenticated
 
         # Attributes exposed by the service
+        self.account_id: Optional[UUID] = None  # set when client has authenticated
         self.data_conveyor = DataConveyor(self.rng)
         self.model_conveyor = ModelConveyor(self.rng)
 
