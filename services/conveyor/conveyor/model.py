@@ -13,6 +13,10 @@ class Model:
     name: str
     description: str
 
+    def __init__(self):
+        self.name = ""
+        self.description = ""
+
     def save(self, file: io.BufferedIOBase):
         pickle.dump(self, file)
 
@@ -22,11 +26,15 @@ class Model:
 
 
 class LinearRegression(linear_model.LinearRegression, Model):
-    pass
+    def __init__(self):
+        linear_model.LinearRegression.__init__(self)
+        Model.__init__(self)
 
 
 class RidgeRegression(linear_model.Ridge, Model):
-    pass
+    def __init__(self, alpha: float, random_state: np.random.RandomState):
+        linear_model.Ridge.__init__(self, alpha=alpha, random_state=random_state)
+        Model.__init__(self)
 
 
 @remote.safe(
