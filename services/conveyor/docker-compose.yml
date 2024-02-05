@@ -12,12 +12,24 @@ services:
       CONVEYOR_LISTEN_PORT: 12378
       CONVEYOR_REDIS_URL: redis://redis:6379
       CONVEYOR_DATA_DIR: /conveyor/data
+      CONVEYOR_DATA_TTL: 30m
     ports:
       - 12378:12378
     depends_on:
       redis:
         condition: service_healthy
     restart: unless-stopped
+  cleaner:
+    image: c4tbuts4d/dedcleaner:latest
+    cpus: 1
+    mem_limit: 128M
+    pids_limit: 128
+    volumes:
+      - conveyor-data:/data
+    environment:
+      DELETE_AFTER: 30m
+      SLEEP: 5m
+      DIRS: /data
   redis:
     image: redis:7.2.4-alpine3.19
     cpus: 2
