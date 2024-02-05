@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="conveyor_")
 
     debug: bool = False
-    data_ttl: timedelta = timedelta(minutes=30)
+    data_ttl: timedelta
     data_dir: Path
     listen_port: int
     redis_url: RedisDsn
