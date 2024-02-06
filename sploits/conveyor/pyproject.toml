@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "conveyor-sploit"
+version = "1.33.7"
+description = "Conveyor service exploit via 0day in RPYC."
+authors = ["renbou"]
+license = "Apache-2.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "~3.11"
+rpyc = "5.3.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
