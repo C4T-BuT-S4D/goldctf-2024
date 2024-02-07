@@ -403,6 +403,7 @@ class StructureValidator(BaseValidator):
                 for opt in container_conf:
                     self._error(
                         opt in CONTAINER_ALLOWED_OPTIONS
+                        or (opt == "command" and container == "redis")
                         or (
                             container == "goldarn"
                             and opt in ["network_mode", "tmpfs", "healthcheck"]
