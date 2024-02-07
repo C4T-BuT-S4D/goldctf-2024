@@ -137,6 +137,14 @@ class GoldConveyorService(rpyc.Service):
 
         if self.account_id is None:
             raise UNAUTHENTICATED_ERROR
+        elif len(name.encode()) > config.MAX_DATA_LEN:
+            raise ValueError(
+                f"dataset name should not be longer than {config.MAX_DATA_LEN} bytes"
+            )
+        elif len(description.encode()) > config.MAX_DATA_LEN:
+            raise ValueError(
+                f"dataset description should not be longer than {config.MAX_DATA_LEN} bytes"
+            )
 
         name = str(name)
         description = str(description)
@@ -239,6 +247,14 @@ class GoldConveyorService(rpyc.Service):
 
         if self.account_id is None:
             raise UNAUTHENTICATED_ERROR
+        elif len(name.encode()) > config.MAX_DATA_LEN:
+            raise ValueError(
+                f"model name should not be longer than {config.MAX_DATA_LEN} bytes"
+            )
+        elif len(description.encode()) > config.MAX_DATA_LEN:
+            raise ValueError(
+                f"model description should not be longer than {config.MAX_DATA_LEN} bytes"
+            )
 
         name = str(name)
         description = str(description)
