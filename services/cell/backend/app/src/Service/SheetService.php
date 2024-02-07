@@ -43,8 +43,7 @@ final class SheetService
             return false;
         }
 
-        // TODO(jnovikov): find a way to remove '@'.
-        $cnt = @file_get_contents($tokenPath);
+        $cnt = file_get_contents($tokenPath);
         return $cnt == $token;
     }
 

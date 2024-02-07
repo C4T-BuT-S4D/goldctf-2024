@@ -10,7 +10,7 @@ use App\Application\Exception\Handler;
 // settings for you.
 
 \mb_internal_encoding('UTF-8');
-\error_reporting(E_ALL);
+\error_reporting(E_ALL ^ E_WARNING);
 \ini_set('display_errors', 'stderr');
 
 // Application helper functions. Must be included before the composer autoloader.
