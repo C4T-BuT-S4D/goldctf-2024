@@ -1,6 +1,6 @@
 # Conveyor
 
-Welcome, diggers welcome, to our newly-developed startup specializing in gold and ML conveyors!
+Welcome, diggers, welcome, to our newly-developed startup specializing in gold and ML conveyors!
 
 To get started with testing out our product's beta, all you need is a computing device with [Python](https://www.python.org/) and [Poetry](https://python-poetry.org/) installed, using which you could launch the example client script ([scripts/client.py](./scripts/client.py)) by executing:
 
