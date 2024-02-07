@@ -10,9 +10,6 @@ from checklib import *
 
 PORT = 5555
 
-CAPTCHA_DIFFICULTY = 6
-CAPTCHA_ITERATIONS = 3
-
 W = websocket.WebSocket
 
 
