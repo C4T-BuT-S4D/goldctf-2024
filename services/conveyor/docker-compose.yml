@@ -13,6 +13,7 @@ services:
       CONVEYOR_REDIS_URL: redis://redis:6379
       CONVEYOR_DATA_DIR: /conveyor/data
       CONVEYOR_DATA_TTL: P0DT0H30M0S
+      CONVEYOR_DEBUG: t
     ports:
       - 12378:12378
     depends_on:
