@@ -41,6 +41,10 @@ class DataConveyor:
 
     def normalize_sample_weights(self, df: pd.DataFrame) -> pd.DataFrame: ...
 
+    def split_samples(
+        self, *dfs: pd.DataFrame, proportion: float
+    ) -> list[pd.DataFrame]: ...
+
 
 class ModelConveyor:
     pass

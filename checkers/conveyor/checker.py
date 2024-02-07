@@ -3,6 +3,7 @@
 import random
 import sys
 import traceback
+from collections import UserList
 from enum import Enum
 from functools import partial
 from typing import cast
@@ -10,7 +11,12 @@ from typing import cast
 import pandas as pd
 import rpyc
 from checklib import BaseChecker, Status, cquit
-from conveyorlib import AlloyComposition, DataConveyor, GoldConveyorService
+from conveyorlib import (
+    AlloyComposition,
+    DataConveyor,
+    GoldConveyorService,
+    ModelConveyor,
+)
 
 SERVICE_PORT = 12378
 MAX_SAMPLES = 100
@@ -49,6 +55,14 @@ def rnd_nsamples() -> int:
     return random.randint(MIN_SAMPLES, MAX_SAMPLES)
 
 
+# rnd_features returns a random list of features and a target for model training
+def rnd_features() -> tuple[list[str], str]:
+    features = random.choices(FEATURES, k=random.randint(2, len(FEATURES) - 1))
+    left = list(set(FEATURES).difference(features))
+    target = random.choice(left)
+    return features, target
+
+
 class FlagPlace(Enum):
     DATASET = 1
     MODEL = 2
@@ -62,6 +76,7 @@ class Checker(BaseChecker):
     conn: rpyc.Connection
     service: GoldConveyorService
     data_conveyor: DataConveyor
+    model_conveyor: ModelConveyor
 
     def __init__(self, *args, **kwargs):
         super(Checker, self).__init__(*args, **kwargs)
@@ -69,7 +84,6 @@ class Checker(BaseChecker):
     def action(self, action, *args, **kwargs):
         try:
             super(Checker, self).action(action, *args, **kwargs)
-            self._disconnect()
         except ConnectionError as err:
             self.cquit(Status.DOWN, "Connection error", f"Connection error: {err}")
         except TimeoutError as err:
@@ -119,13 +133,26 @@ class Checker(BaseChecker):
         )
 
         # Additionally test DataFrame weight normalization
-        if True:
+        if random.randint(0, 1) == 0:
             df = self.data_conveyor.normalize_sample_weights(df)
             self.assert_gt(
                 PRECISION,
                 abs(df.iloc[random.randint(0, want_nsamples - 1)]["troy_ounces"] - 1.0),
                 "Normalized DataFrame weight deviates too much",
             )
+
+        # Pick DataFrame features/target and split them into train/test datasets
+        features, target = rnd_features()
+        x, y = df[UserList(features)], df[UserList([target])]
+        splits = self.data_conveyor.split_samples(x, y, proportion=0.8)
+        self.assert_eq(len(splits), 4, "Incorrect number of DataFrames after split")
+        x_train, x_test, y_train, y_test = splits
+        self.assert_eq(
+            len(x_train), len(y_train), "Train X and Y length mismatch after split"
+        )
+        self.assert_eq(
+            len(x_test), len(y_test), "Test X and Y length mismatch asfter split"
+        )
 
         self._disconnect()
         self.cquit(Status.OK)
@@ -160,6 +187,7 @@ class Checker(BaseChecker):
 
         self.service = cast(GoldConveyorService, self.conn.root)
         self.data_conveyor = self.service.data_conveyor
+        self.model_conveyor = self.service.model_conveyor
 
     def _disconnect(self):
         self.conn.close()
