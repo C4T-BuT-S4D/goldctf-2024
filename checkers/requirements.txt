@@ -1,4 +1,6 @@
-checklib==0.7.0
+checklib
 websocket-client
 pycryptodome
 pydantic
+openpyxl
+websockets
