@@ -20,7 +20,7 @@ services:
     depends_on:
       - redis
     restart: unless-stopped
-    mem_limit: 512m
+    mem_limit: 768m
     pids_limit: 512
     cpus: 2
 
