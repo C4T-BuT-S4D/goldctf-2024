@@ -402,7 +402,11 @@ class StructureValidator(BaseValidator):
 
                 for opt in container_conf:
                     self._error(
-                        opt in CONTAINER_ALLOWED_OPTIONS,
+                        opt in CONTAINER_ALLOWED_OPTIONS
+                        or (
+                            container == "goldarn"
+                            and opt in ["network_mode", "tmpfs", "healthcheck"]
+                        ),
                         f"option {opt} in {path} is not allowed for container {container}",
                     )
 
@@ -474,7 +478,11 @@ class StructureValidator(BaseValidator):
 
                     for opt in container_conf:
                         self._error(
-                            opt in SERVICE_ALLOWED_OPTIONS,
+                            opt in SERVICE_ALLOWED_OPTIONS
+                            or (
+                                container == "goldarn"
+                                and opt in ["network_mode", "tmpfs", "healthcheck"]
+                            ),
                             f"option {opt} in {path} is not allowed for service {container}",
                         )
 
@@ -587,7 +595,7 @@ def dump_tasks(_args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Validate checkers for A&D. "
-                    "Host & number of runs are passed with HOST and RUNS env vars"
+        "Host & number of runs are passed with HOST and RUNS env vars"
     )
     subparsers = parser.add_subparsers()
 

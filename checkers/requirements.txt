@@ -1,3 +1,4 @@
 checklib
 openpyxl
+websocket-client
 websockets
