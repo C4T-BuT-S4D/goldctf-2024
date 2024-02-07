@@ -84,7 +84,7 @@ class FlagPlace(Enum):
 
 class Checker(BaseChecker):
     vulns: int = 2
-    timeout: int = 15
+    timeout: int = 20
     uses_attack_data: bool = True
 
     conn: rpyc.Connection
