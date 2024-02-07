@@ -48,6 +48,7 @@ CONTAINER_ALLOWED_OPTIONS = CONTAINER_REQUIRED_OPTIONS + [
     "sysctls",
     "privileged",
     "security_opt",
+    "command",
 ]
 SERVICE_REQUIRED_OPTIONS = ["pids_limit", "mem_limit", "cpus"]
 SERVICE_ALLOWED_OPTIONS = CONTAINER_ALLOWED_OPTIONS
@@ -402,7 +403,11 @@ class StructureValidator(BaseValidator):
                 for opt in container_conf:
                     self._error(
                         opt in CONTAINER_ALLOWED_OPTIONS
-                        or (opt == "command" and container == "redis"),
+                        or (opt == "command" and container == "redis")
+                        or (
+                            container == "goldarn"
+                            and opt in ["network_mode", "tmpfs", "healthcheck"]
+                        ),
                         f"option {opt} in {path} is not allowed for container {container}",
                     )
 
@@ -474,7 +479,11 @@ class StructureValidator(BaseValidator):
 
                     for opt in container_conf:
                         self._error(
-                            opt in SERVICE_ALLOWED_OPTIONS,
+                            opt in SERVICE_ALLOWED_OPTIONS
+                            or (
+                                container == "goldarn"
+                                and opt in ["network_mode", "tmpfs", "healthcheck"]
+                            ),
                             f"option {opt} in {path} is not allowed for service {container}",
                         )
 
