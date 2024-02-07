@@ -15,6 +15,7 @@ from conveyorlib import (
     AlloyComposition,
     DataConveyor,
     GoldConveyorService,
+    Model,
     ModelConveyor,
 )
 
@@ -139,20 +140,41 @@ class Checker(BaseChecker):
                 PRECISION,
                 abs(df.iloc[random.randint(0, want_nsamples - 1)]["troy_ounces"] - 1.0),
                 "Normalized DataFrame weight deviates too much",
+                Status.MUMBLE,
             )
 
         # Pick DataFrame features/target and split them into train/test datasets
         features, target = rnd_features()
         x, y = df[UserList(features)], df[UserList([target])]
         splits = self.data_conveyor.split_samples(x, y, proportion=0.8)
-        self.assert_eq(len(splits), 4, "Incorrect number of DataFrames after split")
+        self.assert_eq(
+            len(splits), 4, "Incorrect number of DataFrames after split", Status.MUMBLE
+        )
         x_train, x_test, y_train, y_test = splits
         self.assert_eq(
-            len(x_train), len(y_train), "Train X and Y length mismatch after split"
+            len(x_train),
+            len(y_train),
+            "Train X and Y length mismatch after split",
+            Status.MUMBLE,
         )
         self.assert_eq(
-            len(x_test), len(y_test), "Test X and Y length mismatch asfter split"
+            len(x_test),
+            len(y_test),
+            "Test X and Y length mismatch asfter split",
+            Status.MUMBLE,
         )
+
+        # Train model and test it
+        model = self._train_model(x_train, y_train)
+        test_mode = random.randint(0, 2)
+        if test_mode == 0:
+            score = model.score(x_test, y_test)
+        elif test_mode == 1:
+            predict = model.predict(x_test)
+            score = self.model_conveyor.mean_absolute_error(y_test, predict)
+        else:
+            predict = model.predict(x_test)
+            score = self.model_conveyor.mean_squared_error(y_test, predict)
 
         self._disconnect()
         self.cquit(Status.OK)
@@ -222,6 +244,12 @@ class Checker(BaseChecker):
         return params, random.choice(generators)(
             want_weight, want_deviation, want_nsamples
         )
+
+    def _train_model(self, x: pd.DataFrame, y: pd.DataFrame) -> Model:
+        if random.randint(0, 1) == 0:
+            return self.model_conveyor.fit_linear_regression(x, y)
+        else:
+            return self.model_conveyor.fit_ridge(x, y)
 
 
 if __name__ == "__main__":

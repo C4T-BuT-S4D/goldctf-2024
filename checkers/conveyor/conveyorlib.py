@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Optional
 from uuid import UUID
 
+import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 
@@ -46,8 +48,31 @@ class DataConveyor:
     ) -> list[pd.DataFrame]: ...
 
 
+MatrixLike = np.ndarray | pd.DataFrame
+ArrayLike = npt.ArrayLike
+
+
+class Model:
+    name: str
+    description: str
+
+    def predict(self, X: MatrixLike) -> np.ndarray: ...
+
+    def score(self, X: MatrixLike, y: MatrixLike | ArrayLike) -> float: ...
+
+
 class ModelConveyor:
-    pass
+    def fit_linear_regression(self, x: npt.ArrayLike, y: npt.ArrayLike) -> Model: ...
+
+    def fit_ridge(self, x: npt.ArrayLike, y: npt.ArrayLike) -> Model: ...
+
+    def mean_absolute_error(
+        self, y_true: npt.ArrayLike, y_pred: npt.ArrayLike
+    ) -> float: ...
+
+    def mean_squared_error(
+        self, y_true: npt.ArrayLike, y_pred: npt.ArrayLike
+    ) -> float: ...
 
 
 class GoldConveyorService:

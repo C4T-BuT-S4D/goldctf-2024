@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: ./deploy/Dockerfile
-    cpus: 2
+    cpus: 4
     mem_limit: 2G
     pids_limit: 512
     volumes:
