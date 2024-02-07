@@ -39,6 +39,8 @@ class DataConveyor:
 
     def concat_samples(self, *dfs: pd.DataFrame) -> pd.DataFrame: ...
 
+    def normalize_sample_weights(self, df: pd.DataFrame) -> pd.DataFrame: ...
+
 
 class ModelConveyor:
     pass

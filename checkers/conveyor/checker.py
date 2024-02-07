@@ -31,6 +31,7 @@ ALLOYS = [
     AlloyComposition(gold_fr=0.75, silver_fr=0.05, copper_fr=0.2, platinum_fr=0),
     AlloyComposition(gold_fr=0.75, silver_fr=0, copper_fr=0, platinum_fr=0.25),
 ]
+PRECISION = 1e-3
 
 
 # rnd_weight returns random number of ounces for DataConveyor
@@ -85,20 +86,46 @@ class Checker(BaseChecker):
 
     def check(self):
         self._connect()
-        (want_weight, want_deviation, want_nsamples), df = self._generate_samples()
 
+        # Generate DataFrame, like for put
+        (want_weight, want_deviation, want_nsamples), df = self._generate_samples()
         self.assert_eq(
             len(df),
             want_nsamples,
-            "Incorrect DataFrame length after generation",
+            "Incorrect length of generated DataFrame",
             Status.MUMBLE,
         )
         self.assert_eq(
             df.shape,
             (want_nsamples, len(FEATURES)),
-            "Incorrect DataFrame shape after generation",
+            "Incorrect shape of generated DataFrame",
             Status.MUMBLE,
         )
+        self.assert_neq(
+            str(df.head(1)),
+            "",
+            "Empty head() of generated DataFrame",
+            Status.MUMBLE,
+        )
+        self.assert_gt(
+            want_deviation,
+            abs(
+                df.iloc[random.randint(0, want_nsamples - 1)]["troy_ounces"]
+                - want_weight
+            )
+            / want_weight,
+            "Generated DataFrame weight deviates too much",
+            Status.MUMBLE,
+        )
+
+        # Additionally test DataFrame weight normalization
+        if True:
+            df = self.data_conveyor.normalize_sample_weights(df)
+            self.assert_gt(
+                PRECISION,
+                abs(df.iloc[random.randint(0, want_nsamples - 1)]["troy_ounces"] - 1.0),
+                "Normalized DataFrame weight deviates too much",
+            )
 
         self._disconnect()
         self.cquit(Status.OK)
