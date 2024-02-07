@@ -1,4 +1,6 @@
 checklib
+pycryptodome
+pydantic
 openpyxl
 websocket-client
 websockets
