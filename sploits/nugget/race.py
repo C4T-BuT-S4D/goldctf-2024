@@ -6,7 +6,7 @@ import sys
 import time
 import uuid
 
-from starlib import *
+from nuggetlib import *
 
 
 def gen_tar_header(name: str, size: int):

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"star/internal/uploads"
-	"star/internal/utils"
+	"nugget/internal/uploads"
+	"nugget/internal/utils"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/websocket"

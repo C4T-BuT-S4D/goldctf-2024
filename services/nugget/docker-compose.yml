@@ -1,7 +1,7 @@
 version: '2.4'
 
 services:
-  star:
+  nugget:
     build: .
     restart: unless-stopped
     ports:

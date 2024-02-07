@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"star/internal/captcha"
+	"nugget/internal/captcha"
 
 	"golang.org/x/net/websocket"
 )

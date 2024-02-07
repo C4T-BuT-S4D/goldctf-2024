@@ -13,9 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"star/internal/cleaner"
-	"star/internal/logging"
-	"star/internal/service"
+	"nugget/internal/cleaner"
+	"nugget/internal/logging"
+	"nugget/internal/service"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -47,7 +47,7 @@ func connectionHandler(pwd string, secret []byte) func(conn *websocket.Conn) {
 }
 
 func readSecret() []byte {
-	secret, err := os.ReadFile("secrets/star_secret")
+	secret, err := os.ReadFile("secrets/nugget")
 	if err == nil {
 		return secret
 	}
@@ -55,7 +55,7 @@ func readSecret() []byte {
 	if _, err := io.ReadFull(rand.Reader, secret); err != nil {
 		logrus.Fatalf("generating secret: %v", err)
 	}
-	if err := os.WriteFile("secrets/star_secret", secret, 0600); err != nil {
+	if err := os.WriteFile("secrets/nugget", secret, 0600); err != nil {
 		logrus.Fatalf("writing secret: %v", err)
 	}
 	return secret
@@ -63,6 +63,9 @@ func readSecret() []byte {
 
 func main() {
 	logging.Init()
+
+	// Safe non-concurrent init.
+	readSecret()
 
 	pwd, err := os.Getwd()
 	if err != nil {

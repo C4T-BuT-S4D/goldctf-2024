@@ -8,8 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	"star/internal/captcha"
-	"star/internal/logging"
+	"nugget/internal/captcha"
+	"nugget/internal/logging"
 
 	"github.com/sirupsen/logrus"
 )

@@ -9,7 +9,7 @@ import zipfile
 import websocket
 from checklib import *
 
-from starlib import CheckMachine, JobRequest, Job, Step, Artifact
+from nuggetlib import CheckMachine, JobRequest, Job, Step, Artifact
 
 
 class Checker(BaseChecker):
