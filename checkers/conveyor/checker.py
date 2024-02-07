@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import json
 import random
 import sys
 import traceback
@@ -10,7 +11,7 @@ from typing import cast
 
 import pandas as pd
 import rpyc
-from checklib import BaseChecker, Status, cquit
+from checklib import BaseChecker, Status, cquit, rnd_string
 from conveyorlib import (
     AlloyComposition,
     DataConveyor,
@@ -39,6 +40,7 @@ ALLOYS = [
     AlloyComposition(gold_fr=0.75, silver_fr=0, copper_fr=0, platinum_fr=0.25),
 ]
 PRECISION = 1e-3
+MAX_DATA_LEN = 128
 
 
 # rnd_weight returns random number of ounces for DataConveyor
@@ -62,6 +64,17 @@ def rnd_features() -> tuple[list[str], str]:
     left = list(set(FEATURES).difference(features))
     target = random.choice(left)
     return features, target
+
+
+# rnd_name generates random name of model or dataset
+def rnd_name(info: str) -> str:
+    length = random.randint(MAX_DATA_LEN // 2, MAX_DATA_LEN - len(info) - 1)
+    return info + "_" + rnd_string(length)
+
+
+# rnd_description generates random description of model or dataset
+def rnd_description() -> str:
+    return rnd_string(random.randint(MAX_DATA_LEN // 2, MAX_DATA_LEN))
 
 
 class FlagPlace(Enum):
@@ -93,7 +106,7 @@ class Checker(BaseChecker):
             if "_get_exception_class" in type(err).__qualname__:
                 self.cquit(
                     Status.MUMBLE,
-                    "Unexpected remote error",
+                    f"Unexpected remote error: {str(err)}",
                     f"Unexpected remote error: {traceback.format_exception(err)}",
                 )
             else:
@@ -181,16 +194,105 @@ class Checker(BaseChecker):
 
     def put(self, _flag_id: str, flag: str, vuln: str):
         flag_place = self._parse_vuln(vuln)
-
         self._connect()
+
+        access_key = self.service.create_account()
+        account_id = str(self.service.account_id)
+
+        # Always generate dataset, because it is needed for both flag places
+        (_, _, want_nsamples), df = self._generate_samples()
+        self.assert_eq(
+            len(df),
+            want_nsamples,
+            "Incorrect length of generated DataFrame",
+            Status.MUMBLE,
+        )
+
+        if flag_place == FlagPlace.DATASET:
+            # Create a few random datasets, one containing the flag in its description
+            extra_datasets = random.randint(1, 2)
+            dataset_params = [
+                (rnd_name("dataset"), rnd_description()) for _ in range(extra_datasets)
+            ]
+            dataset_params.append((rnd_name("dataset"), flag))
+            random.shuffle(dataset_params)
+
+            for name, description in dataset_params:
+                self.service.save_dataset(df, name, description)
+        else:
+            dataset_params = []
+            pass
+
         self._disconnect()
-        self.cquit(Status.OK, "public", "private")
+
+        private = dict(k=access_key, i=account_id, p=dataset_params, n=want_nsamples)
+        private = json.dumps(private, separators=(",", ":"))
+
+        self.cquit(Status.OK, f"account_id: {account_id}", private)
 
     def get(self, flag_id: str, flag: str, vuln: str):
         flag_place = self._parse_vuln(vuln)
-        assert flag_id == "private"
+        private = json.loads(flag_id)
+        access_key = private["k"]
+        account_id = private["i"]
+        dataset_params = private["p"]
+        nsamples = private["n"]
 
         self._connect()
+
+        # Always check authentication
+        try:
+            self.service.authenticate(access_key)
+        except ValueError as err:
+            self.cquit(
+                Status.CORRUPT,
+                "Failed to authenticate",
+                f"Failed to authenticate as {account_id} using key {access_key}: {err}",
+            )
+        self.assert_eq(
+            str(self.service.account_id),
+            account_id,
+            "Account ID mismatch",
+            Status.CORRUPT,
+        )
+
+        if flag_place == FlagPlace.DATASET:
+            want_datasets = dict(dataset_params)
+            dataset_info = self.service.list_datasets()
+            for info in dataset_info:
+                name, description = info.name, info.description
+                self.assert_in(
+                    name,
+                    want_datasets,
+                    "list_datasets returned unknown dataset",
+                    Status.CORRUPT,
+                )
+                self.assert_eq(
+                    description,
+                    want_datasets[name],
+                    "list_datasets returned incorrect dataset description",
+                    Status.CORRUPT,
+                )
+                want_datasets.pop(name)
+
+            self.assert_eq(
+                0,
+                len(want_datasets),
+                "datasets missing from list_datasets result",
+                Status.CORRUPT,
+            )
+
+            flag_dataset_name = next(filter(lambda p: p[1] == flag, dataset_params))[0]
+            df = self.service.load_dataset(flag_dataset_name)
+            self.assert_eq(
+                nsamples,
+                len(df),
+                "Incorrect length of loaded DataFrame",
+                Status.CORRUPT,
+            )
+        else:
+            pass
+
         self._disconnect()
         self.cquit(Status.OK)
 

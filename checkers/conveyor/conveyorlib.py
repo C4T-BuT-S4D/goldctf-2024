@@ -75,7 +75,22 @@ class ModelConveyor:
     ) -> float: ...
 
 
+class DataSetInfo:
+    name: str
+    description: str
+
+
 class GoldConveyorService:
     account_id: Optional[UUID]
     data_conveyor: DataConveyor
     model_conveyor: ModelConveyor
+
+    def create_account(self) -> str: ...
+
+    def authenticate(self, access_key: str): ...
+
+    def save_dataset(self, df: pd.DataFrame, name: str, description: str): ...
+
+    def list_datasets(self) -> list[DataSetInfo]: ...
+
+    def load_dataset(self, name: str) -> pd.DataFrame: ...
