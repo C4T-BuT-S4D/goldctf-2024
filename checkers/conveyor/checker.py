@@ -208,8 +208,11 @@ class Checker(BaseChecker):
             Status.MUMBLE,
         )
 
+        dataset_params = []
+        model_params = []
+
         if flag_place == FlagPlace.DATASET:
-            # Create a few random datasets, one containing the flag in its description
+            # Save dataset with random info, one containing the flag in its description
             extra_datasets = random.randint(1, 2)
             dataset_params = [
                 (rnd_name("dataset"), rnd_description()) for _ in range(extra_datasets)
@@ -220,12 +223,30 @@ class Checker(BaseChecker):
             for name, description in dataset_params:
                 self.service.save_dataset(df, name, description)
         else:
-            dataset_params = []
-            pass
+            features, target = rnd_features()
+            x, y = df[UserList(features)], df[UserList([target])]
+            model = self._train_model(x, y)
+
+            # Save model with random info, one containing the flag in its description
+            extra_models = random.randint(1, 2)
+            model_params = [
+                (rnd_name("model"), rnd_description()) for _ in range(extra_models)
+            ]
+            model_params.append((rnd_name("model"), flag))
+            random.shuffle(model_params)
+
+            for name, description in model_params:
+                self.service.save_model(model, name, description)
 
         self._disconnect()
 
-        private = dict(k=access_key, i=account_id, p=dataset_params, n=want_nsamples)
+        private = dict(
+            k=access_key,
+            i=account_id,
+            p=dataset_params,
+            n=want_nsamples,
+            m=model_params,
+        )
         private = json.dumps(private, separators=(",", ":"))
 
         self.cquit(Status.OK, f"account_id: {account_id}", private)
@@ -236,6 +257,7 @@ class Checker(BaseChecker):
         access_key = private["k"]
         account_id = private["i"]
         dataset_params = private["p"]
+        model_params = private["m"]
         nsamples = private["n"]
 
         self._connect()
@@ -291,7 +313,38 @@ class Checker(BaseChecker):
                 Status.CORRUPT,
             )
         else:
-            pass
+            want_names = set(map(lambda p: p[0], model_params))
+            model_names = self.service.list_models()
+            for name in model_names:
+                self.assert_in(
+                    name,
+                    want_names,
+                    "list_models returned unknown model",
+                    Status.CORRUPT,
+                )
+                want_names.remove(name)
+
+            self.assert_eq(
+                0,
+                len(want_names),
+                "models missing from list_models result",
+                Status.CORRUPT,
+            )
+
+            flag_model_name = next(filter(lambda p: p[1] == flag, model_params))[0]
+            model = self.service.load_model(flag_model_name)
+            self.assert_eq(
+                model.name,
+                flag_model_name,
+                "Incorrect name of loaded model",
+                Status.CORRUPT,
+            )
+            self.assert_eq(
+                model.description,
+                flag,
+                "Incorrect description of loaded model",
+                Status.CORRUPT,
+            )
 
         self._disconnect()
         self.cquit(Status.OK)
