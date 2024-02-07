@@ -18,6 +18,7 @@ UNAUTHENTICATED_ERROR = Exception("authentication required")
 INVALID_ACCESS_KEY_ERROR = ValueError("invalid access key provided")
 
 
+@remote.safe({"name", "description"})
 @dataclass
 class DataSet:
     name: str
