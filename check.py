@@ -271,7 +271,9 @@ class Service(BaseValidator):
 
     def _run_dc(self, *args):
         cmd = ["docker", "compose", "-f", str(self._dc_path)] + list(args)
-        subprocess.run(cmd, check=True)
+        import sys
+
+        subprocess.run(cmd, check=True, stdout=sys.stdout, stderr=sys.stderr)
 
     def up(self):
         self._log("starting")
