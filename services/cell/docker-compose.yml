@@ -20,18 +20,22 @@ services:
     depends_on:
       - redis
     restart: unless-stopped
+    mem_limit: 512m
+    pids_limit: 512
+    cpus: 2
+
   centrifugo:
     image: centrifugo/centrifugo:v5
     restart: unless-stopped
     volumes:
       - ./conf/centrifugo.json:/centrifugo/config.json
     command: centrifugo -c config.json
-    ulimits:
-      nofile:
-        soft: 65535
-        hard: 65535
+    pids_limit: 256
+    mem_limit: 512m
+    cpus: 1
     depends_on:
       - backend
+      - redis
   redis:
     image: redis:alpine
     restart: unless-stopped
