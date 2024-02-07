@@ -20,7 +20,4 @@ COPY backend/ .
 COPY conf/rr.yml rr.yaml
 COPY conf/backend.env .env
 
-RUN mkdir -p /data/task/acls
-RUN mkdir -p /data/task/user-files
-
 CMD ./rr serve -c rr.yaml
