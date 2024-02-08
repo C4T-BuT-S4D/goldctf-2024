@@ -1,15 +1,10 @@
 {
-    "token_hmac_secret_key": "79c22604-79b3-46b6-bed2-e97c154928f0",
-    "admin_password": "04cb477a-c9bf-403f-9688-616da432db3a",
-    "admin_secret": "641de3b0-3ba2-4278-b3c3-0a116bee14dd",
-    "api_key": "dc982ee8-8fa8-4a1f-8de5-c918d3fdfaba",
+    "api_disable": true,
     "allowed_origins": [
         "*"
     ],
-    "publish": false,
     "proxy_publish": false,
     "proxy_subscribe": true,
-    "proxy_connect": true,
     "allow_subscribe_for_client": true,
     "grpc_api": true,
     "grpc_api_address": "0.0.0.0",

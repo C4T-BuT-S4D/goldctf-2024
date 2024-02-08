@@ -19,5 +19,6 @@ COPY --from=spiralscout/roadrunner:latest /usr/bin/rr /app
 COPY backend/ .
 COPY conf/rr.yml rr.yaml
 COPY conf/backend.env .env
+COPY backend-entry.sh ./entry.sh
 
-CMD ./rr serve -c rr.yaml
+CMD ["./entry.sh"]
