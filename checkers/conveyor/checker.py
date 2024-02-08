@@ -105,9 +105,10 @@ class Checker(BaseChecker):
             self.cquit(Status.DOWN, "Timeout error", f"Timeout error: {err}")
         except Exception as err:
             if "_get_exception_class" in type(err).__qualname__:
+                err_desc = str(err).split("\n", 1)[0]  # error without the remote part
                 self.cquit(
                     Status.MUMBLE,
-                    f"Unexpected remote error: {str(err).split('\n', 1)[0]}",
+                    f"Unexpected remote error: {err_desc}",
                     f"Unexpected remote error: {traceback.format_exception(err)}",
                 )
             else:
