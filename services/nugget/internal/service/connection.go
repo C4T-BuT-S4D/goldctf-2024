@@ -134,9 +134,9 @@ func (cc *ConnectionContext) archiveFiles(name string, files []ArchiveFile) {
 
 	toClose := make([]io.Closer, 0, 2)
 	defer func() {
-		for i := len(toClose) - 1; i >= 0; i-- {
-			if err := toClose[i-1].Close(); err != nil {
-				cc.logger.Errorf("closing %v: %v", toClose[i-1], err)
+		for _, closer := range toClose {
+			if err := closer.Close(); err != nil {
+				cc.logger.Errorf("error closing %v: %v", closer, err)
 			}
 		}
 	}()
@@ -151,7 +151,7 @@ func (cc *ConnectionContext) archiveFiles(name string, files []ArchiveFile) {
 	tw := tar.NewWriter(tFile)
 	toClose = append(toClose, tw)
 
-	logrus.Debugf("archiving %d files", len(files))
+	cc.logger.Debugf("archiving %d files", len(files))
 	for _, fn := range files {
 		fp, err := cc.sanitizePath(fn.Source)
 		if err != nil {
@@ -212,7 +212,7 @@ func (cc *ConnectionContext) archiveFiles(name string, files []ArchiveFile) {
 	}
 	toClose = toClose[:len(toClose)-1]
 
-	logrus.Debugf("done archiving %d files, compressing", len(files))
+	cc.logger.Debugf("done archiving %d files, compressing", len(files))
 	if err := cc.compressFiles(tarPath, zipPath); err != nil {
 		cc.externalErr("compressing backup: %v", err)
 		return
