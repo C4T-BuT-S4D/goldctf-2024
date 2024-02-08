@@ -1,2 +1,0 @@
-# minipwn
-git+https://github.com/OAlienO/mini-pwntools.git
