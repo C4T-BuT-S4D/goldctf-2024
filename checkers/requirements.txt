@@ -7,3 +7,4 @@ pydantic
 openpyxl
 websocket-client
 websockets
+git+https://github.com/OAlienO/mini-pwntools.git # minipwn
