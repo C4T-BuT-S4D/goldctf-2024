@@ -3,6 +3,7 @@
 namespace App\Endpoint\Web;
 
 use App\Service\SheetService;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Ramsey\Uuid\Uuid;
@@ -103,9 +104,18 @@ class SheetController
                 "data" => ["error" => "file is not xlsx"],
             ];
         }
+        try {
+            $spreadsheet = IOFactory::load($tmpFilename);
+            $worksheet = $spreadsheet->getActiveSheet();
+            $title = $worksheet->getTitle();
+        } catch (\Exception $e) {
+            return [
+                "status" => 422,
+                "data" => ["error" => "file is not xlsx"],
+            ];
+        }
 
-        $clientName = $sheetFile->getClientFilename() ?? "sheet";
-        $sheetInfo = $this->sheetService->createSheet($uid, $clientName, $tmpFilename);
+        $sheetInfo = $this->sheetService->createSheet($uid, $title, $tmpFilename);
         if (empty($sheetInfo)) {
             return [
                 "status" => 500,

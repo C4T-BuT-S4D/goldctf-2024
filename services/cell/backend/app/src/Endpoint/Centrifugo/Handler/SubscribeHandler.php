@@ -22,10 +22,9 @@ final class SubscribeHandler implements ServiceInterface
     {
         try {
             if (!$this->authorizeTopic($request)) {
-                $request->disconnect(403, 'Channel is not allowed.');
+                $request->error(1001, "Forbidden");
                 return;
             }
-
 
             $request->respond(
                 new SubscribeResponse()

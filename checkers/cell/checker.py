@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import warnings
 import random
 import re
 import tempfile
@@ -15,6 +16,8 @@ from websockets.exceptions import WebSocketException
 from checklib import status
 
 import cell_lib
+
+warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
 
 class Checker(BaseChecker):
     vulns: int = 1
@@ -40,6 +43,17 @@ class Checker(BaseChecker):
             self.cquit(status, public, f"Invalid JSON while decoding: {s[:100]}")
         else:
             return data
+    
+    def _create_excel_file(self, sheet_name:str, cell_value:str):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws['A1'] = cell_value
+        ws.title = sheet_name
+            
+        fp = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+        fp.close()
+        wb.save(fp.name)
+        return fp
         
 
     def check(self):
@@ -53,15 +67,8 @@ class Checker(BaseChecker):
         upload_file = random.randint(0, 1) == 1
 
         if upload_file == 1:
-            wb = openpyxl.Workbook()
-            ws = wb.active
-            ws['A1'] = cell_value
-            ws.title = sheet_name
-            
-            fp = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
-            fp.close()
-            wb.save(fp.name)
-            sheet = self.cm.upload_sheet(sess, sheet_name, fp.name)
+            fp = self._create_excel_file(sheet_name, cell_value)
+            sheet = self.cm.upload_sheet(sess, sheet_name + ".xlsx", fp.name)
             os.unlink(fp.name)
         else:
             sheet = self.cm.create_sheet(sess, sheet_name)
@@ -125,7 +132,13 @@ class Checker(BaseChecker):
         self.cm.register(sess, username, password)
         self.cm.login(sess, username, password)
 
-        sheet = self.cm.create_sheet(sess, flag)
+        upload_file = random.randint(0, 1) == 1
+        if upload_file == 1:
+            sheet = self.cm.create_sheet(sess, flag)
+        else:
+            fp = self._create_excel_file(flag, "Flag is not: " + rnd_string(31))
+            sheet = self.cm.upload_sheet(sess, rnd_string(31) + ".xlsx", fp.name)
+            os.unlink(fp.name)
 
         sid = sheet.get('sid')
         readToken = sheet.get('readToken')
