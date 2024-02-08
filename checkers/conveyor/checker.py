@@ -12,6 +12,7 @@ from typing import cast
 import pandas as pd
 import rpyc
 from checklib import BaseChecker, Status, cquit, rnd_string
+
 from conveyorlib import (
     AlloyComposition,
     DataConveyor,
@@ -106,7 +107,7 @@ class Checker(BaseChecker):
             if "_get_exception_class" in type(err).__qualname__:
                 self.cquit(
                     Status.MUMBLE,
-                    f"Unexpected remote error: {str(err)}",
+                    f"Unexpected remote error: {str(err).split('\n', 1)[0]}",
                     f"Unexpected remote error: {traceback.format_exception(err)}",
                 )
             else:

@@ -6,8 +6,10 @@ from uuid import UUID, uuid4
 
 import numpy as np
 import pandas as pd
+import pyarrow
 import rpyc
 import structlog
+from pyarrow import feather
 
 from . import config, remote, storage
 from .data import DataConveyor, DataFrame
@@ -153,7 +155,7 @@ class GoldConveyorService(rpyc.Service):
 
         try:
             with self.files.open_write(file_id) as f:
-                df.to_feather(f)
+                feather.write_feather(pyarrow.Table.from_pandas(df), f)
         except Exception as err:
             self.logger.error(
                 "unexpectedly failed to save dataframe to file",
