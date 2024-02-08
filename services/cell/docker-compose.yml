@@ -30,7 +30,7 @@ services:
     volumes:
       - ./conf/centrifugo.json:/centrifugo/config.json
     command: centrifugo -c config.json
-    pids_limit: 256
+    pids_limit: 512
     mem_limit: 512m
     cpus: 1
     depends_on:
