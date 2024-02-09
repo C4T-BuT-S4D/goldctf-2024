@@ -26,8 +26,6 @@ $app = Kernel::create(
         'root' => __DIR__,
         'acls' => '/data/acls',
         'user-files' => '/data/user-files',
-//        'acls' => '/data/task/acls',
-//        'user-files' => '/data/task/user-files',
     ],
     exceptionHandler: Handler::class,
 )->run();

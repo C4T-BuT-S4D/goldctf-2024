@@ -59,11 +59,9 @@ final class RPCHandler implements ServiceInterface
             return ['error' => 'Sheet not found', 'code' => 404];
         }
 
-//        print "CALLING CAN WRITE\n";
         if (!$this->sheetService->can_write($sheetId, $authToken)) {
             return ['error' => 'Unauthorized', 'code' => 401];
         }
-//        print "CAN WRITE UHUHUH\n";
 
         try {
             $out = $this->sheetService->modifySheet($sheetId, $cell, $value);

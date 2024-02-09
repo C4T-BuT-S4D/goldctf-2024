@@ -33,8 +33,6 @@ class Kernel extends \Spiral\Framework\Kernel
             CoreBootloader::class,
             DotenvBootloader::class,
             TokenizerListenerBootloader::class,
-
-//            DumperBootloader::class,
         ];
     }
 

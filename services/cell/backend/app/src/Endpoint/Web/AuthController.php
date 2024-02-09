@@ -88,4 +88,14 @@ final class AuthController
             "data" => ["uid" => $uid, "username" => $login],
         ];
     }
+
+    #[Route(route: '/api/logout', name: 'logout', methods: ['POST'])]
+    public function logout(): array
+    {
+        $this->auth->close();
+        return [
+            "status" => 200,
+            "data" => ["message" => "Logged out"]
+        ];
+    }
 }
