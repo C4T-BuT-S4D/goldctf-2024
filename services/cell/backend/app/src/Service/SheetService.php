@@ -2,16 +2,12 @@
 
 namespace App\Service;
 
-use Defuse\Crypto\File;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Psr\Log\LoggerInterface;
 use Psr\SimpleCache\CacheInterface;
 use Ramsey\Uuid\Uuid;
 use Spiral\Cache\CacheStorageProviderInterface;
 use Spiral\Boot\DirectoriesInterface;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use Spiral\Core\Exception\Container\NotFoundException;
 use Spiral\Files\FilesInterface;
 use Spiral\Prototype\Annotation\Prototyped;
 
@@ -25,7 +21,6 @@ final class SheetService
 
     public function __construct(private readonly DirectoriesInterface $dirs,
                                 private readonly FilesInterface       $files,
-                                private readonly LoggerInterface $logger,
                                 CacheStorageProviderInterface         $provider,
     )
     {
@@ -38,7 +33,6 @@ final class SheetService
 
     private function has_access(string $tokenPath, string $token): bool
     {
-        $len = strlen($tokenPath);
         if (!file_exists($tokenPath)) {
             return false;
         }
@@ -121,14 +115,12 @@ final class SheetService
 
     public function pathTo(string $sid): string
     {
-        $sep = FilesInterface::SEPARATOR;
         $filesDir = $this->dirs->get("user-files");
         return "$filesDir$sid";
     }
 
     public function exists(string $sid): bool
     {
-        $sep = FilesInterface::SEPARATOR;
         $filesDir = $this->dirs->get("user-files");
         $fpath = "$filesDir$sid";
         return file_exists($fpath);
@@ -142,7 +134,6 @@ final class SheetService
     private function guard_path(string $sid, string $ext): string
     {
         $aclsDir = $this->dirs->get("acls");
-        $sep = FilesInterface::SEPARATOR;
 
         return "$aclsDir$sid$ext";
     }

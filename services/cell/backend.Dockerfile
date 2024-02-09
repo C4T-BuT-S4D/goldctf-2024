@@ -1,4 +1,4 @@
-FROM php:8.2-cli@sha256:e0941c06b8a4f6e48c7c57672dce608d1e314419b5c14b4f385cd9550cc7abb6 as backend
+FROM php:8.3-cli
 
 RUN apt update && apt install -y git libpng-dev libzip-dev
 RUN docker-php-ext-install gd zip opcache sockets
