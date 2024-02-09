@@ -35,13 +35,7 @@ final class ViewRenderer implements RendererInterface
 
     public function renderException(Request $request, int $code, \Throwable $exception): ResponseInterface
     {
-        // If request accepts json, we will render as a json response
-        $acceptItems = AcceptHeader::fromString($request->getHeaderLine('Accept'))->getAll();
         return $this->renderJson($code, $exception);
-//        if ($acceptItems && $acceptItems[0]->getValue() === 'application/json') {
-//        }
-//
-//        return $this->renderView($code, $exception);
     }
 
     private function renderJson(int $code, \Throwable $exception): ResponseInterface
