@@ -1,0 +1,29 @@
+version: '2.4'
+
+services:
+  digger:
+    build: service
+    cpus: 2
+    pids_limit: 32768
+    mem_limit: 2G
+    restart: unless-stopped
+    # stop_grace_period: 3s
+    volumes:
+      - storage:/var/digger/storage:rw
+    ports:
+      - "17171:31337"
+
+  cleaner:
+    build: cleaner
+    cpus: 1
+    pids_limit: 256
+    mem_limit: 256M
+    restart: unless-stopped
+    # stop_grace_period: 3s
+    volumes:
+      - storage:/var/digger/storage:rw
+    depends_on:
+      - digger
+
+volumes:
+  storage:
