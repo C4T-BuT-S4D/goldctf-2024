@@ -8,8 +8,8 @@ import des
 import tables
 
 
-PAIRS_COUNT = (2 ** 16)
-# PAIRS_COUNT = (2 ** 17)
+PAIRS_COUNT = (2 ** 14)
+PAIRS_TRIES = 8
 
 Pair = Tuple[des.Bytes, des.Bytes]
 Oracle = Callable[[List[des.Bytes]], List[des.Bytes]]
@@ -157,39 +157,59 @@ def slide_attack(oracle: Oracle) -> des.Bits:
     plaintexts1 = []
     plaintexts2 = []
 
+    ciphertexts1 = []
+    ciphertexts2 = []
+
     const_part = b'A' * 4
 
-    for i in range(PAIRS_COUNT):
-        plaintext1 = urandom(4) + const_part
-        plaintext1 = permutate_bytes(plaintext1, tables.FINAL_PERMUTATION)
-        plaintexts1.append(plaintext1)
+    for k in range(PAIRS_TRIES):
+        print(f'trying {PAIRS_COUNT} blocks more')
 
-        plaintext2 = const_part + urandom(4)
-        plaintext2 = permutate_bytes(plaintext2, tables.FINAL_PERMUTATION)
-        plaintexts2.append(plaintext2)
+        plaintexts1_part = []
+        plaintexts2_part = []
 
-    ciphertexts1 = oracle(plaintexts1)
-    ciphertexts2 = oracle(plaintexts2)
+        for i in range(PAIRS_COUNT):
+            plaintext1 = urandom(4) + const_part
+            plaintext1 = permutate_bytes(plaintext1, tables.FINAL_PERMUTATION)
+            plaintexts1_part.append(plaintext1)
 
-    ciphertexts1 = [
-        permutate_bytes(ciphertext, tables.INITIAL_PERMUTATION)
-        for ciphertext in ciphertexts1
-    ]
+            plaintext2 = const_part + urandom(4)
+            plaintext2 = permutate_bytes(plaintext2, tables.FINAL_PERMUTATION)
+            plaintexts2_part.append(plaintext2)
 
-    ciphertexts2 = [
-        permutate_bytes(ciphertext, tables.INITIAL_PERMUTATION)
-        for ciphertext in ciphertexts2
-    ]
+        ciphertexts1_part = oracle(plaintexts1_part)
+        ciphertexts2_part = oracle(plaintexts2_part)
 
-    plaintexts2 = [
-        permutate_bytes(plaintext, tables.INITIAL_PERMUTATION)
-        for plaintext in plaintexts2
-    ]
+        ciphertexts1_part = [
+            permutate_bytes(ciphertext, tables.INITIAL_PERMUTATION)
+            for ciphertext in ciphertexts1_part
+        ]
 
-    pairs1 = list(zip(plaintexts1, ciphertexts1))
-    pairs2 = list(zip(plaintexts2, ciphertexts2))
+        ciphertexts2_part = [
+            permutate_bytes(ciphertext, tables.INITIAL_PERMUTATION)
+            for ciphertext in ciphertexts2_part
+        ]
 
-    return find_round_key(pairs1, pairs2)
+        plaintexts2_part = [
+            permutate_bytes(plaintext, tables.INITIAL_PERMUTATION)
+            for plaintext in plaintexts2_part
+        ]
+
+        plaintexts1 += plaintexts1_part
+        plaintexts2 += plaintexts2_part
+
+        ciphertexts1 += ciphertexts1_part
+        ciphertexts2 += ciphertexts2_part
+
+        pairs1 = list(zip(plaintexts1, ciphertexts1))
+        pairs2 = list(zip(plaintexts2, ciphertexts2))
+
+        round_key = find_round_key(pairs1, pairs2)
+
+        if round_key is not None:
+            print(f'found round_key: {round_key}')
+
+            return round_key
 
 
 def recover_possible_keys(vuln_oracle: Oracle, plaintext: des.Bytes, ciphertext: des.Bytes) -> List[bytes]:
@@ -197,6 +217,8 @@ def recover_possible_keys(vuln_oracle: Oracle, plaintext: des.Bytes, ciphertext:
     assert round_key is not None, 'slide attack failed'
 
     master_key = bruteforce_master_key(round_key, plaintext, ciphertext)
+    print(f'master_key: {master_key}')
+
     indices = [i for i in range(len(master_key)) if master_key[i] < 0]
 
     keys = []
