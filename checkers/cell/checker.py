@@ -21,7 +21,7 @@ warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
 
 class Checker(BaseChecker):
     vulns: int = 1
-    timeout: int = 15
+    timeout: int = 20
     uses_attack_data: bool = True
 
     def __init__(self, *args, **kwargs):
@@ -102,15 +102,30 @@ class Checker(BaseChecker):
         
             new_cell_value = rnd_string(30)
             # Modify cell.
-            _modify_result = self.cm.modify_cell(ws_writer, 2, sid, 'B2', new_cell_value, modifyToken)
+            # Try to modify cell twice to solve the reliability issue.
+            for _attempt in range(0, 2):
+                try:
+                    _modify_result = self.cm.modify_cell(ws_writer, 2, sid, 'B2', new_cell_value, modifyToken, timeout=self.timeout // 3)
+                    break
+                except TimeoutError:
+                    continue
+
+            self.assert_neq(_modify_result, None, 'Failed to modify cell: no response received')
             self.assert_in('rpc', _modify_result.keys(), 'Invalid modify_cell response')
-            self.assert_eq(_modify_result.get('rpc', {}).get('data', {}).get('sheet', {}).get('title', None), sheet_name, 'Invalid sheet title in modify_cell response')
-            cell_values = [x.get('val', '') for x in _modify_result.get('rpc', {}).get('data').get('sheet', {}).get('cells', [])]
+            mb_sheet = _modify_result.get('rpc', {}).get('data', {}).get('sheet', {})
+            self.assert_eq(mb_sheet.get('title', None), sheet_name, 'Invalid sheet title in modify_cell response')
+            cell_values = [x.get('val', '') for x in mb_sheet.get('cells', [])]
             self.assert_in(new_cell_value, cell_values, 'New cell value not found in modify_cell response')
 
-            # Fet update from reader.
-            expected_update = ws_reader.recv()
-            update_data = self.decode_json(expected_update, 'Invalid JSON received from sheet update')
+            # Get update from reader.
+            # Try to get update twice to solve the reliability issue.
+            for _attempt in range(0, 2):
+                expected_update = ws_reader.recv(timeout=self.timeout // 3)
+                update_data = self.decode_json(expected_update, 'Invalid JSON received from sheet update')
+                if update_data:
+                    break
+
+            self.assert_eq(type(update_data), dict, 'Invalid JSON received from sheet update')
             update_data = update_data.get('push', {}).get('pub', {}).get('data', {})
             self.assert_eq(update_data.get('title', ''), sheet_name, 'Invalid sheet title returned from sheet update')
             cell_values = [x.get('val', '') for x in update_data.get('cells', [])]

@@ -93,7 +93,7 @@ class CheckMachine:
         return msg
         
     
-    def modify_cell(self, ws: websockets.sync.connection.Connection, op_id: int, sheet_id: str, cell: str, value: str, token: str):
+    def modify_cell(self, ws: websockets.sync.connection.Connection, op_id: int, sheet_id: str, cell: str, value: str, token: str, timeout: int = None):
         payload = {
             "id": op_id,
             "rpc": {
@@ -108,8 +108,11 @@ class CheckMachine:
         }
 
         ws.send(json.dumps(payload))
+        msg = self.c.decode_json(ws.recv(timeout=timeout), 'Invalid JSON received from RPC')
+        if not msg:
+            raise TimeoutError("Got empty response")
 
-        msg = self.c.decode_json(ws.recv(), 'Invalid JSON received from RPC')
+        self.c.assert_eq(type(msg), dict, 'Invalid JSON received from RPC')
         self.c.assert_eq(msg.get('id'), op_id, 'Invalid id in RPC response')
         return msg
 
