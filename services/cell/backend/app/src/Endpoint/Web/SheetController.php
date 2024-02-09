@@ -89,7 +89,7 @@ class SheetController
                 "data" => ["error" => "File upload error"]
             ];
         }
-        if ($sheetFile->getSize() > 5 * 1024 * 1024) {
+        if ($sheetFile->getSize() > 50 * 1024) {
             return [
                 "status" => 422,
                 "data" => ["error" => "file is too big"],

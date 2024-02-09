@@ -28,3 +28,11 @@ server:
 centrifuge:
   proxy_address: "tcp://0.0.0.0:10001"
   grpc_api_address: "tcp://centrifugo:10000"
+
+logs:
+  channels:
+    server:
+      level: info
+    centrifuge:
+      level: info
+
