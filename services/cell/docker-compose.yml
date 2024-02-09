@@ -43,6 +43,17 @@ services:
     mem_limit: 512m
     volumes:
       - redis-data:/data
+
+  cleaner:
+    image: c4tbuts4d/dedcleaner:latest
+    restart: unless-stopped
+    volumes:
+      - user-files:/data/user-files
+      - acls:/data/acls
+    environment:
+      - DELETE_AFTER=30m
+      - SLEEP=30m
+      - DIRS=/data/user-files,/data/acls
 volumes:
   user-files:
   acls:
