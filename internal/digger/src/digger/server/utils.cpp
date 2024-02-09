@@ -4,6 +4,7 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
+#include <filesystem>
 
 using namespace Digger;
 using namespace Digger::Server;
