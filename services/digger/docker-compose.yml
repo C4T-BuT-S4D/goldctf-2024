@@ -1,0 +1,39 @@
+version: '2.2'
+
+services:
+  digger:
+    build: service
+    cpus: 2
+    pids_limit: 32768
+    mem_limit: 2G
+    memswap_limit: 2G
+    ulimits:
+      nofile:
+        soft: 32768
+        hard: 32768
+    restart: unless-stopped
+    stop_grace_period: 3s
+    volumes:
+      - storage:/var/digger/storage:rw
+    ports:
+      - "17171:31337"
+
+  cleaner:
+    build: cleaner
+    cpus: 1
+    pids_limit: 256
+    mem_limit: 256M
+    memswap_limit: 256M
+    ulimits:
+      nofile:
+        soft: 16384
+        hard: 16384
+    restart: unless-stopped
+    stop_grace_period: 3s
+    volumes:
+      - storage:/var/digger/storage:rw
+    depends_on:
+      - digger
+
+volumes:
+  storage:
