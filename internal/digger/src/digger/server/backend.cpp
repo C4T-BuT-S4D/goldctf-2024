@@ -11,8 +11,8 @@
 using namespace Digger;
 using namespace Digger::Server;
 
-const std::string PasswordsDirectory = "passwords";
-const std::string SecretsDirectory = "secrets";
+const std::string PasswordsDirectory = "storage/passwords";
+const std::string SecretsDirectory = "storage/secrets";
 
 using Exception = std::runtime_error;
 
