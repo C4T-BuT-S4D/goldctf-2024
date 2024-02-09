@@ -20,7 +20,7 @@ http:
   pool:
     num_workers: 2
     supervisor:
-      max_worker_memory: 100
+      max_worker_memory: 128
 server:
   command: 'php app.php'
   relay: pipes
