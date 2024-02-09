@@ -27,7 +27,7 @@ def attack(client: api.API, username: bytes) -> bytes:
     oracle_calls = 0
     oracle_data = 0
 
-    oracle_part_size = 8 * 1024
+    oracle_part_size = 16 * 1024
 
     def vuln_oracle(blocks: List[des.Bytes]) -> List[des.Bytes]:
         nonlocal oracle_calls, oracle_data, oracle_part_size

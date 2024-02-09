@@ -8,7 +8,7 @@ import des
 import tables
 
 
-PAIRS_COUNT = (2 ** 14)
+PAIRS_COUNT = (2 ** 15)
 PAIRS_TRIES = 8
 
 Pair = Tuple[des.Bytes, des.Bytes]
