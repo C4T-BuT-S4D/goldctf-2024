@@ -4,7 +4,7 @@ using namespace Digger;
 using namespace Digger::Crypto;
 
 template <size_t Size>
-Bits ByteToBits(Byte byte) {
+__attribute_noinline__ Bits ByteToBits(Byte byte) {
     Bits bits(Size);
 
     for (size_t i = 0; i < Size; i += 1) {
@@ -15,7 +15,7 @@ Bits ByteToBits(Byte byte) {
 }
 
 template <size_t Size>
-Byte BitsToByte(const Bits& bits) {
+__attribute_noinline__ Byte BitsToByte(const Bits& bits) {
     Byte byte = 0;
 
     for (size_t i = 0; i < Size; i += 1) {
@@ -25,7 +25,7 @@ Byte BitsToByte(const Bits& bits) {
     return byte;
 }
 
-Bits BytesToBits(const Bytes& bytes) {
+__attribute_noinline__ Bits BytesToBits(const Bytes& bytes) {
     Bits bits(8 * bytes.size());
 
     auto it = bits.begin();
@@ -39,7 +39,7 @@ Bits BytesToBits(const Bytes& bytes) {
     return bits;
 }
 
-Bytes BitsToBytes(const Bits& bits, size_t size) {
+__attribute_noinline__ Bytes BitsToBytes(const Bits& bits, size_t size) {
     Bytes bytes(size);
 
     auto it = bits.begin();
@@ -55,7 +55,7 @@ Bytes BitsToBytes(const Bits& bits, size_t size) {
     return bytes;
 }
 
-std::pair<Bits, Bits> SplitBits(const Bits& bits, size_t size) {
+__attribute_noinline__ std::pair<Bits, Bits> SplitBits(const Bits& bits, size_t size) {
     Bits first(size);
     Bits second(size);
 
@@ -65,7 +65,7 @@ std::pair<Bits, Bits> SplitBits(const Bits& bits, size_t size) {
     return std::pair(first, second);
 }
 
-Bits JoinBits(const Bits& first, const Bits& second) {
+__attribute_noinline__ Bits JoinBits(const Bits& first, const Bits& second) {
     Bits bits(first.size() + second.size());
 
     auto it = bits.begin();
@@ -76,7 +76,7 @@ Bits JoinBits(const Bits& first, const Bits& second) {
     return bits;
 }
 
-Bits Xor(const Bits& bits1, const Bits& bits2) {
+__attribute_noinline__ Bits Xor(const Bits& bits1, const Bits& bits2) {
     auto size = std::min(bits1.size(), bits2.size());
 
     Bits bits(size);
@@ -89,7 +89,7 @@ Bits Xor(const Bits& bits1, const Bits& bits2) {
 }
 
 template <size_t Size>
-Bits Permutate(const Bits& bits, const Table<Size>& table) {
+__attribute_noinline__ Bits Permutate(const Bits& bits, const Table<Size>& table) {
     Bits result(Size);
 
     for (size_t i = 0; i < Size; i += 1) {
@@ -100,7 +100,7 @@ Bits Permutate(const Bits& bits, const Table<Size>& table) {
 }
 
 template <size_t Size>
-Bits Expand(const Bits& bits, const Table<Size>& table) {
+__attribute_noinline__ Bits Expand(const Bits& bits, const Table<Size>& table) {
     Bits result(Size);
 
     for (size_t i = 0; i < Size; i += 1) {
@@ -111,7 +111,7 @@ Bits Expand(const Bits& bits, const Table<Size>& table) {
 }
 
 template <size_t Size>
-Bits Substitute(const Bits& bits, const Mapping<Size>& mapping) {
+__attribute_noinline__ Bits Substitute(const Bits& bits, const Mapping<Size>& mapping) {
     Bytes pieces(8);
 
     auto it = bits.begin();
@@ -142,7 +142,7 @@ Bits Substitute(const Bits& bits, const Mapping<Size>& mapping) {
     return result;
 }
 
-Bits DES::Function(const Bits& bits, const Bits& key) const {
+__attribute_noinline__ __attribute__ ((optimize(0))) Bits DES::Function(const Bits& bits, const Bits& key) const {
     Bits result;
 
     result = Expand(bits, Ctx.Expansion);
@@ -153,7 +153,7 @@ Bits DES::Function(const Bits& bits, const Bits& key) const {
     return result;
 }
 
-KeySchedule DES::GenerateKeySchedule(const Bytes& key, size_t rounds) const {
+__attribute_noinline__ __attribute__ ((optimize(0))) KeySchedule DES::GenerateKeySchedule(const Bytes& key, size_t rounds) const {
     Bits bits = BytesToBits(key);
 
     bits = Permutate(bits, Ctx.PC1);
@@ -176,7 +176,7 @@ KeySchedule DES::GenerateKeySchedule(const Bytes& key, size_t rounds) const {
     return schedule;
 }
 
-Bytes DES::ProcessBlock(const Bytes& text, const KeySchedule& schedule) const {
+__attribute_noinline__ __attribute__ ((optimize(0))) Bytes DES::ProcessBlock(const Bytes& text, const KeySchedule& schedule) const {
     auto bits = BytesToBits(text);
 
     bits = Permutate(bits, Ctx.InitialPermutation);
@@ -196,18 +196,18 @@ Bytes DES::ProcessBlock(const Bytes& text, const KeySchedule& schedule) const {
     return BitsToBytes(bits, 8);
 }
 
-DES::DES(const Context& ctx, const Bytes& key, size_t rounds)
+__attribute_noinline__ __attribute__ ((optimize(0))) DES::DES(const Context& ctx, const Bytes& key, size_t rounds)
     : Ctx(ctx) {
     RoundKeys = GenerateKeySchedule(key, rounds);
     ReversedRoundKeys = KeySchedule(RoundKeys.rbegin(), RoundKeys.rend());
 }
 
-DES::~DES() { }
+__attribute_noinline__ __attribute__ ((optimize(0))) DES::~DES() { }
 
-Bytes DES::Encrypt(const Bytes& plaintext) const {
+__attribute_noinline__ __attribute__ ((optimize(0))) Bytes DES::Encrypt(const Bytes& plaintext) const {
     return ProcessBlock(plaintext, RoundKeys);
 }
 
-Bytes DES::Decrypt(const Bytes& ciphertext) const {
+__attribute_noinline__ __attribute__ ((optimize(0))) Bytes DES::Decrypt(const Bytes& ciphertext) const {
     return ProcessBlock(ciphertext, ReversedRoundKeys);
 }

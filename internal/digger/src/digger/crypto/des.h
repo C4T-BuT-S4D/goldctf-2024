@@ -1,10 +1,13 @@
 #pragma once
 
+#include <vector>
+
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+
 #include <digger/crypto/types.h>
 #include <digger/crypto/cipher.h>
 #include <digger/crypto/context.h>
-
-#include <vector>
 
 namespace Digger::Crypto {
 
@@ -31,3 +34,5 @@ namespace Digger::Crypto {
     };
 
 }; /* namespace Digger::Crypto */
+
+#pragma GCC pop_options
