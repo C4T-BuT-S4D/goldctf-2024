@@ -1,6 +1,6 @@
 # Conveyor
 
-Conveyor was a gold-related ML data and model pipeline "builder", allowing a client to generate randomized gold alloy datasets and then train simple linear models on the data using the features exposed via [RPyC](https://rpyc.readthedocs.io/en/latest/index.html). There were no intended vulnerabilities in the service code itself, and the intended exploitation method required using unreported 0day in the RPyC library source code to gain RCE via which flags from both redis and the filesystem could be exfiltrated.
+Conveyor was a gold-related ML data and model pipeline "builder", allowing a client to generate randomized gold alloy datasets and then train simple linear models on the data using the features exposed via [RPyC](https://rpyc.readthedocs.io/en/latest/index.html). Additional information about the service and example client usage is available in the main service readme ([../../services/conveyor/README.md](../../services/conveyor/README.md)). There were no intended vulnerabilities in the service code itself, and the intended exploitation method required using unreported 0day in the RPyC library source code to gain RCE via which flags from both redis and the filesystem could be exfiltrated.
 
 ## RPyC 0day
 
