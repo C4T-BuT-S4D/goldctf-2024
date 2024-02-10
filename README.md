@@ -35,7 +35,7 @@ Repository contains source code of services, checkers and sploits.
 
 ## Writeups
 
+- [cell](/sploits/cell/)
 - [conveyor](/sploits/conveyor/)
 - [digger](/sploits/digger/)
-
-Coming...
+- [nugget](/sploits/nugget/)
