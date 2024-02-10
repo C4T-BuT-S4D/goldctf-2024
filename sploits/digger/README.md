@@ -372,6 +372,24 @@ for master_key in master_key_candidates:
 
 Example exploit: [sploit.py](/sploits/digger/sploit.py). The attack itself is implemented in [slide.py](/sploits/digger/slide.py).
 
+It does some expensive computations, so run it with [PyPy](https://www.pypy.org/).
+
+```bash
+$ time pypy3.10 sploit.py "${HOSTNAME}" 'jKZNCPnMXJ3ooHcesGPagPdfxp' 
+trying 32768 blocks more
+encrypted 16384 / 32768
+encrypted 32768 / 32768
+encrypted 16384 / 32768
+encrypted 32768 / 32768
+found round_key: [1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0]
+master_key: [0, 1, 1, 0, 0, 0, 1, -2, 0, 0, 1, 0, 0, 0, 0, -2, 0, 1, 0, 1, 1, 1, 0, -2, 0, 1, 1, 0, 0, 1, 1, -2, 0, 1, 1, 1, 1, 0, 0, -2, 0, 0, 1, 0, 1, 1, 1, -2, 0, 1, 1, 0, 0, 0, 0, -2, 0, 1, 1, 0, 0, 0, 1, -2]
+oracle calls: 4 by 16.0 KB
+oracle data: 1024.0 KB, 1.0 MB
+found key: b'b!]gy.`c'
+b'successfully logged in, your secret: ABCDABCDABCDABCDABCDABCDABCDABC='
+pypy3.10 sploit.py "${HOSTNAME}" 'jKZNCPnMXJ3ooHcesGPagPdfxp'  2.05s user 0.08s system 28% cpu 7.576 total
+```
+
 ## Patching
 
 Get rid of `std::move` and pass into `Backend::Backend()` the raw copy of `this->Contexts`.
