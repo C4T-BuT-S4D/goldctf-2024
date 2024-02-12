@@ -38,4 +38,5 @@ Repository contains source code of services, checkers and sploits.
 - [cell](/sploits/cell/)
 - [conveyor](/sploits/conveyor/)
 - [digger](/sploits/digger/)
+- [goldarn](/sploits/goldarn/)
 - [nugget](/sploits/nugget/)
